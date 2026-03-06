@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+**/.vite
+*.log
+
+# Local scratch captures
+alteryx_after_drag.png
+alteryx_after_paste.png
+alteryx_after_paste_grid.png
+alteryx_after_search_drag.png
+alteryx_after_search_place.png
+alteryx_focus_check.png
+alteryx_focus_check2.png

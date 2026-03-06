@@ -1,0 +1,222 @@
+:root {
+  --bg: #f7f5ee;
+  --bg-soft: #e8efe4;
+  --card: #ffffffcc;
+  --line: #d3ddce;
+  --text: #17331f;
+  --muted: #4f6a57;
+  --brand: #2f7d5f;
+  --brand-soft: #cee7db;
+  --warn: #92631a;
+  --warn-soft: #f7ebc4;
+  --danger: #8f2e3d;
+  --danger-soft: #f7d3da;
+  --good: #1d6f42;
+  --good-soft: #d0efd7;
+  font-family: "Avenir Next", "Segoe UI", Tahoma, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 0 0, #d2ecde 0, transparent 38%),
+    radial-gradient(circle at 100% 0, #f3ddbd 0, transparent 34%),
+    linear-gradient(170deg, var(--bg) 0%, var(--bg-soft) 100%);
+}
+
+.layout {
+  width: min(1200px, 100vw - 24px);
+  margin: 0 auto;
+  padding: 18px 0 30px;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--card);
+  backdrop-filter: blur(4px);
+}
+
+.hero {
+  padding: 18px 20px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--brand);
+  font-weight: 700;
+}
+
+h1 {
+  margin: 8px 0 10px;
+  font-size: clamp(1.5rem, 3.8vw, 2.8rem);
+  line-height: 1;
+}
+
+.hero p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.controls {
+  margin-top: 12px;
+  padding: 14px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+
+.field span,
+.group-title,
+.label {
+  font-weight: 700;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+}
+
+.chip-group {
+  margin-top: 14px;
+}
+
+.chip-group p {
+  margin: 0 0 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 8px 8px 0;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.chip-muted {
+  background: #f8f9f5;
+}
+
+.bottom-grid {
+  margin-top: 12px;
+}
+
+.results {
+  margin-top: 14px;
+}
+
+.summary {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+}
+
+.card-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  padding: 14px;
+}
+
+.card-top {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.icon {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.muted,
+.sources span,
+.dose {
+  color: var(--muted);
+}
+
+.badge {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef2ea;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.badge-good {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.badge-warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.badge-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.list,
+.sources {
+  padding-left: 18px;
+}
+
+.sources li {
+  margin-bottom: 8px;
+}
+
+.sources a {
+  color: var(--brand);
+}
+
+.empty {
+  padding: 18px;
+}
+
+@media (max-width: 800px) {
+  .field-grid,
+  .card-top {
+    grid-template-columns: 1fr;
+  }
+}
