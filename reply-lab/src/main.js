@@ -39,6 +39,10 @@ const examples = [
   },
   {
     label: "וייב של אזור",
+    message: "Need a bass dep around Old Street on Friday night"
+  },
+  {
+    label: "אזור רחוק",
     message: "Need a bass dep at Wembley on Friday night"
   },
   {
