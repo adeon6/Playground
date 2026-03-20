@@ -239,8 +239,8 @@ function buildReply(result) {
 function buildSecondaryNote(result) {
   if (result.status === "reply") {
     return result.locationType === "area"
-      ? "גם בלי פוסטקוד, המערכת הצליחה להבין את האזור הכללי ולבדוק אם הוא נראה קרוב מספיק."
-      : "ההודעה נראית כמו ליד אמיתי, עם כלי רלוונטי ומיקום שנמצא בטווח שהגדרת.";
+      ? `גם בלי פוסטקוד, המערכת הצליחה להבין את האזור הכללי. המרחק המשוער הוא ${formatDistance(result.distanceKm)}, וזה בתוך הטווח שהגדרת.`
+      : `ההודעה נראית כמו ליד אמיתי, עם כלי רלוונטי ומיקום שנמצא בטווח שהגדרת. המרחק המשוער: ${formatDistance(result.distanceKm)}.`;
   }
 
   if (result.status === "ask-postcode") {
@@ -248,7 +248,7 @@ function buildSecondaryNote(result) {
   }
 
   if (result.status === "out-of-range") {
-    return "המערכת מזהה פנייה רלוונטית, אבל מסמנת שלא כדאי לענות אוטומטית לפי הטווח הנוכחי.";
+    return `לא נשלח כאן מענה אוטומטי כי המרחק המשוער הוא ${formatDistance(result.distanceKm)}, וזה מעל הטווח שהגדרת (${formatDistance(state.maxAirDistanceKm)}).`;
   }
 
   return "המערכת מסננת החוצה הודעות שלא נשמעות כמו בקשת עזרה אמיתית על בס.";
@@ -269,6 +269,14 @@ function statusMeta(status) {
 
 function formatTime() {
   return new Date().toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDistance(distanceKm) {
+  if (typeof distanceKm !== "number" || Number.isNaN(distanceKm)) {
+    return "לא זמין";
+  }
+
+  return `${distanceKm.toFixed(1)} ק"מ`;
 }
 
 function renderShell() {
@@ -433,6 +441,13 @@ function renderFacts(result) {
           : result.locationType === "area"
             ? "לפי אזור/לנדמרק"
             : "עדיין לא"
+    },
+    {
+      label: "מרחק משוער",
+      value:
+        typeof result.distanceKm === "number"
+          ? `${formatDistance(result.distanceKm)} מול טווח מקסימלי של ${formatDistance(state.maxAirDistanceKm)}`
+          : "אין מרחק כי עדיין אין מיקום ברור"
     }
   ];
 
