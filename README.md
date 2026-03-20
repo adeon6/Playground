@@ -26,8 +26,18 @@ Supplement / wellness helper app.
 - Default local URL: `http://localhost:5175`
 - GitHub Pages: designed to be publishable directly from the `wellness` folder via the included workflow
 
+### `poe`
+Path of Exile build guide app seeded from a Path of Building import.
+
+- Dev: `cd poe && npm run dev`
+- Build: `cd poe && npm run build`
+- Default local URL: `http://localhost:5176`
+
 ### `d2-grail`
 Node-based Diablo II grail tooling.
+
+### `reply-lab`
+Shareable static simulator for WhatsApp lead messages and suggested replies.
 
 ## Repo Notes
 
@@ -49,14 +59,22 @@ Basic deploy flow:
 
 ## Sharing `wellness`
 
-The repo includes a GitHub Actions workflow that can publish the `wellness` app directly to GitHub Pages.
+The repo includes a GitHub Actions workflow that publishes a combined GitHub Pages site for this repo.
 
 After pushing to GitHub:
 
 1. Open the repository on GitHub.
 2. Go to `Settings -> Pages`.
 3. Under `Build and deployment`, choose `GitHub Actions`.
-4. Push a change to `wellness`, or manually run the `Deploy Wellness To GitHub Pages` workflow.
-5. Share the Pages URL GitHub gives you.
+4. Push a change to `wellness`, `reply-lab`, or `pages`, or manually run the `Deploy Playground Pages` workflow.
+5. The shared landing page will be published at the Pages URL GitHub gives you.
 
-Because `wellness` is plain static HTML/CSS/JS, visitors do not need to install anything.
+Because these apps are plain static HTML/CSS/JS, visitors do not need to install anything.
+
+## Pages URLs
+
+Once deployed, you can share:
+
+1. The repo landing page: `/Playground/`
+2. Reply Lab directly: `/Playground/reply-lab/`
+3. Wellness directly: `/Playground/wellness/`

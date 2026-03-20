@@ -1,4 +1,4 @@
-name: Deploy Wellness To GitHub Pages
+name: Deploy Playground Pages
 
 on:
   push:
@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "wellness/**"
+      - "reply-lab/**"
+      - "pages/**"
       - ".github/workflows/deploy-wellness-pages.yml"
   workflow_dispatch:
 
@@ -32,10 +34,18 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload wellness site
+      - name: Build static Pages bundle
+        run: |
+          mkdir public
+          cp -R pages/. public/
+          mkdir -p public/wellness public/reply-lab
+          cp -R wellness/. public/wellness/
+          cp -R reply-lab/. public/reply-lab/
+
+      - name: Upload Playground site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./wellness
+          path: ./public
 
       - name: Deploy to GitHub Pages
         id: deployment
