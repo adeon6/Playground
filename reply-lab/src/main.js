@@ -28,11 +28,23 @@ const helpKeywordsDefault = [
   "need"
 ];
 
-const exampleMessages = [
-  "מחפש בסיסט להופעה בשבוע הבא ב-TW12 1YU",
-  "צריך מישהו על בס להקלטה קצרה ב-SE15 3EB",
-  "מה נשמע? אתה פנוי לקפה השבוע?",
-  "מחפשת שיעור בס באזור N1 6FB"
+const examples = [
+  {
+    label: "הופעה קרובה",
+    message: "מחפש בסיסט להופעה בשבוע הבא ב-TW12 1YU. יש חזרה אחת לפני"
+  },
+  {
+    label: "חסר פוסטקוד",
+    message: "צריך בסיסט להקלטה קצרה בשבוע הבא, אתה פנוי?"
+  },
+  {
+    label: "רחוק מדי",
+    message: "מחפשת מורה לבס באזור BR3 3SR לשיעורים קבועים"
+  },
+  {
+    label: "צ'אט רגיל",
+    message: "מה נשמע? בא לך לקפה השבוע?"
+  }
 ];
 
 const state = {
@@ -40,7 +52,7 @@ const state = {
   maxAirDistanceKm: 12,
   instrumentKeywords: [...instrumentKeywordsDefault],
   helpKeywords: [...helpKeywordsDefault],
-  message: exampleMessages[0],
+  message: examples[0].message,
   cache: new Map()
 };
 
@@ -67,7 +79,7 @@ async function lookupPostcode(postcode) {
   const response = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(normalized)}`);
   const payload = await response.json();
   if (!response.ok || !payload?.result) {
-    throw new Error(`Could not find postcode ${postcode}`);
+    throw new Error(`לא הצלחתי לזהות את הפוסטקוד ${postcode}`);
   }
 
   const coords = {
@@ -104,7 +116,7 @@ async function evaluateMessage(message) {
       instrumentMatch,
       helpIntent,
       postcode,
-      reason: !instrumentMatch ? "לא זוהה קשר ברור לבס" : "זה נראה כמו צ'אט רגיל, לא בקשת עזרה"
+      reason: !instrumentMatch ? "לא זוהה קשר ברור לבס" : "זו נראית שיחה רגילה, לא פנייה לעזרה"
     };
   }
 
@@ -114,7 +126,7 @@ async function evaluateMessage(message) {
       instrumentMatch,
       helpIntent,
       postcode,
-      reason: "נראית בקשת עזרה רלוונטית, אבל חסר פוסטקוד"
+      reason: "זו נראית פנייה אמיתית, אבל חסר פוסטקוד"
     };
   }
 
@@ -133,13 +145,13 @@ async function evaluateMessage(message) {
     postcode,
     distanceKm,
     inRange,
-    reason: inRange ? "נראה רלוונטי ואזורי" : "נראה רחוק מדי כרגע"
+    reason: inRange ? "נראה באזור ולכן רלוונטי" : "נראה רחוק מדי כרגע"
   };
 }
 
 function buildReply(result) {
   if (result.status === "ignore") {
-    return "לא נשלחת תשובה. ההודעה נראית כמו שיחה רגילה או לא קשורה לבס.";
+    return "אין תגובה אוטומטית. זו לא נראית כרגע כפנייה שדורשת מענה.";
   }
 
   if (result.status === "ask-postcode") {
@@ -147,23 +159,43 @@ function buildReply(result) {
   }
 
   if (result.status === "out-of-range") {
-    return "כרגע לא הייתי עונה אוטומטית, כי זה נראה קצת רחוק. אם זה משהו מיוחד, אפשר לבדוק ידנית.";
+    return "כרגע לא הייתי שולח מענה אוטומטי. אם זה משהו חריג או חשוב במיוחד, שווה לבדוק ידנית.";
   }
 
   return "היי, ראיתי את ההודעה שלך. אני בסיסט ואני באזור, אז זה נשמע לי רלוונטי. אם מתאים, אפשר לשלוח עוד פרטים על מה צריך ומתי?";
 }
 
+function buildSecondaryNote(result) {
+  if (result.status === "reply") {
+    return "ההודעה נראית כמו ליד אמיתי, עם כלי רלוונטי ופוסטקוד בתוך הטווח שהגדרת.";
+  }
+
+  if (result.status === "ask-postcode") {
+    return "כאן כדאי לאשר עניין, אבל קודם לבקש מיקום כדי לדעת אם בכלל להמשיך.";
+  }
+
+  if (result.status === "out-of-range") {
+    return "המערכת מזהה פנייה רלוונטית, אבל מסמנת שלא כדאי לענות אוטומטית לפי הטווח הנוכחי.";
+  }
+
+  return "המערכת מסננת החוצה הודעות שלא נשמעות כמו בקשת עזרה אמיתית על בס.";
+}
+
 function statusMeta(status) {
   if (status === "reply") {
-    return { label: "לענות", tone: "good" };
+    return { label: "נשלחת תשובה", tone: "good" };
   }
   if (status === "ask-postcode") {
-    return { label: "לבקש פוסטקוד", tone: "warn" };
+    return { label: "מבקשים פוסטקוד", tone: "warn" };
   }
   if (status === "out-of-range") {
-    return { label: "לא לענות אוטומטית", tone: "muted" };
+    return { label: "לא שולחים אוטומטית", tone: "muted" };
   }
-  return { label: "להתעלם", tone: "muted" };
+  return { label: "מתעלמים", tone: "muted" };
+}
+
+function formatTime() {
+  return new Date().toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
 }
 
 function renderShell() {
@@ -172,79 +204,129 @@ function renderShell() {
       <section class="hero">
         <div class="hero-copy">
           <p class="eyebrow">Reply Lab</p>
-          <h1>סימולטור תשובות לגל</h1>
+          <h1>סימולטור תשובות שנראה כמו וואטסאפ אמיתי</h1>
           <p class="lede">
-            גל יכול לכתוב כאן הודעה כאילו היא הגיעה בוואטסאפ, ולקבל מיד החלטה:
-            להתעלם, לבקש פוסטקוד, או להראות את התשובה שהיית שולח.
+            גל יכול לכתוב כאן הודעה כאילו היא נכנסה אליך, ולראות מיד מה המערכת תעשה:
+            להתעלם, לבקש פוסטקוד, או להציע תשובה מלאה בשפה טבעית.
           </p>
         </div>
+
         <div class="hero-card">
-          <p class="hero-kicker">מצב עבודה</p>
-          <strong>בסיסט בלונדון</strong>
-          <span>פוסטקוד בית: <b id="homePostcodeLabel">${state.homePostcode}</b></span>
+          <p class="hero-kicker">מוכן לשיתוף</p>
+          <strong>לינק אחד, בלי התקנה</strong>
+          <span>בודק בסיסטים לפי הודעה, פוסטקוד וטווח שהגדרת</span>
         </div>
       </section>
 
       <section class="workspace">
-        <div class="panel controls">
-          <div class="field-row">
-            <label class="field">
-              <span>פוסטקוד בית</span>
-              <input id="homePostcode" value="${state.homePostcode}" />
-            </label>
-            <label class="field">
-              <span>טווח אווירי מקסימלי (ק"מ)</span>
-              <input id="maxAirDistanceKm" type="number" min="1" max="100" value="${state.maxAirDistanceKm}" />
-            </label>
-          </div>
-
-          <label class="field field-large">
-            <span>הודעת תרגול</span>
-            <textarea id="messageInput" rows="8" placeholder="למשל: מחפש בסיסט להופעה ב-TW12 1YU בשבוע הבא">${state.message}</textarea>
-          </label>
-
-          <div class="example-strip">
-            ${exampleMessages
-              .map(
-                (message, index) => `
-                <button class="example-chip" data-example="${index}" type="button">${message}</button>
-              `
-              )
-              .join("")}
-          </div>
-        </div>
-
-        <div class="panel analysis">
-          <div id="statusMount" class="status-mount"></div>
-          <div id="factsMount" class="facts-grid"></div>
-          <div class="reply-box">
-            <div class="reply-head">
-              <span>תשובה מוצעת</span>
-              <button id="copyReply" type="button" class="ghost-btn">העתק</button>
+        <section class="phone-shell">
+          <div class="phone-frame">
+            <div class="phone-topbar">
+              <div class="avatar">ג</div>
+              <div class="chat-meta">
+                <strong>גל לונדון</strong>
+                <span>מתרגל הודעות מולך</span>
+              </div>
+              <div class="phone-actions">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
             </div>
-            <p id="replyOutput" class="reply-output"></p>
+
+            <div class="chat-surface">
+              <div class="system-pill">הודעת תרגול חדשה</div>
+              <div class="bubble bubble-in">
+                <p id="incomingBubble"></p>
+                <span class="bubble-time" id="incomingTime"></span>
+              </div>
+              <div class="bubble bubble-out bubble-decision" id="replyBubbleWrap">
+                <p id="replyBubble"></p>
+                <span class="bubble-time" id="replyTime"></span>
+              </div>
+            </div>
+
+            <div class="composer">
+              <textarea id="messageInput" rows="4" placeholder="למשל: מחפש בסיסט להופעה ב-TW12 1YU בשבוע הבא"></textarea>
+              <button id="copyReply" type="button" class="send-btn">העתק תשובה</button>
+            </div>
           </div>
-        </div>
+        </section>
+
+        <section class="inspector">
+          <div class="panel panel-main">
+            <div class="panel-head">
+              <div>
+                <p class="micro-label">Decision Engine</p>
+                <h2>מה יקרה להודעה הזאת?</h2>
+              </div>
+              <div id="statusMount"></div>
+            </div>
+
+            <div id="summaryMount" class="summary-box"></div>
+            <div id="factsMount" class="facts-grid"></div>
+          </div>
+
+          <div class="panel panel-controls">
+            <div class="panel-head compact">
+              <div>
+                <p class="micro-label">Settings</p>
+                <h3>כוונון מהיר</h3>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <label class="field">
+                <span>פוסטקוד בית</span>
+                <input id="homePostcode" value="${state.homePostcode}" />
+              </label>
+
+              <label class="field">
+                <span>טווח מקסימלי (ק"מ)</span>
+                <input id="maxAirDistanceKm" type="number" min="1" max="100" value="${state.maxAirDistanceKm}" />
+              </label>
+            </div>
+
+            <div class="example-strip">
+              ${examples
+                .map(
+                  (example, index) => `
+                    <button class="example-chip" data-example="${index}" type="button">${example.label}</button>
+                  `
+                )
+                .join("")}
+            </div>
+          </div>
+        </section>
       </section>
     </main>
   `;
 
+  document.querySelector("#messageInput").value = state.message;
   document.querySelector("#homePostcode").addEventListener("input", handleControlsChange);
   document.querySelector("#maxAirDistanceKm").addEventListener("input", handleControlsChange);
   document.querySelector("#messageInput").addEventListener("input", handleControlsChange);
+
   document.querySelectorAll("[data-example]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.message = exampleMessages[Number(button.dataset.example)];
+      state.message = examples[Number(button.dataset.example)].message;
       document.querySelector("#messageInput").value = state.message;
       updateAnalysis();
     });
   });
+
   document.querySelector("#copyReply").addEventListener("click", async () => {
-    const reply = document.querySelector("#replyOutput").textContent || "";
+    const reply = document.querySelector("#replyBubble").textContent || "";
+    if (!reply) {
+      return;
+    }
+
     await navigator.clipboard.writeText(reply);
-    document.querySelector("#copyReply").textContent = "הועתק";
+    const button = document.querySelector("#copyReply");
+    const original = button.textContent;
+    button.textContent = "הועתק";
     setTimeout(() => {
-      document.querySelector("#copyReply").textContent = "העתק";
+      button.textContent = original;
     }, 1200);
   });
 }
@@ -253,71 +335,105 @@ function handleControlsChange() {
   state.homePostcode = document.querySelector("#homePostcode").value.trim() || "N1 6FB";
   state.maxAirDistanceKm = Number(document.querySelector("#maxAirDistanceKm").value) || 12;
   state.message = document.querySelector("#messageInput").value;
-  document.querySelector("#homePostcodeLabel").textContent = state.homePostcode;
   updateAnalysis();
 }
 
-async function updateAnalysis() {
-  const statusMount = document.querySelector("#statusMount");
-  const factsMount = document.querySelector("#factsMount");
-  const replyOutput = document.querySelector("#replyOutput");
+function renderFacts(result) {
+  const facts = [
+    {
+      label: "זוהה כלי",
+      value: result.instrumentMatch ? "כן, נשמע קשור לבס" : "לא"
+    },
+    {
+      label: "זוהתה בקשת עזרה",
+      value: result.helpIntent ? "כן" : "לא"
+    },
+    {
+      label: "פוסטקוד",
+      value: result.postcode || "לא זוהה"
+    },
+    {
+      label: "סינון אזורי",
+      value:
+        typeof result.distanceKm === "number"
+          ? `${result.distanceKm.toFixed(1)} ק"מ מול סף ${state.maxAirDistanceKm}`
+          : "לא חושב כרגע"
+    }
+  ];
 
-  statusMount.innerHTML = `<p class="loading">מחשב...</p>`;
+  return facts
+    .map(
+      (fact) => `
+        <article class="fact-card">
+          <span>${fact.label}</span>
+          <strong>${fact.value}</strong>
+        </article>
+      `
+    )
+    .join("");
+}
+
+async function updateAnalysis() {
+  const incomingBubble = document.querySelector("#incomingBubble");
+  const incomingTime = document.querySelector("#incomingTime");
+  const replyBubble = document.querySelector("#replyBubble");
+  const replyTime = document.querySelector("#replyTime");
+  const replyBubbleWrap = document.querySelector("#replyBubbleWrap");
+  const statusMount = document.querySelector("#statusMount");
+  const summaryMount = document.querySelector("#summaryMount");
+  const factsMount = document.querySelector("#factsMount");
+
+  const currentMessage = normalizeText(state.message);
+  incomingBubble.textContent = currentMessage || "כתוב כאן הודעת תרגול כדי לראות מה יקרה.";
+  incomingTime.textContent = formatTime();
+
+  statusMount.innerHTML = `<span class="status-chip status-loading">מחשב...</span>`;
+  summaryMount.innerHTML = `<p class="summary-copy">בודק אם זו פנייה אמיתית, אם יש פוסטקוד, ואם היא בטווח שהגדרת.</p>`;
   factsMount.innerHTML = "";
-  replyOutput.textContent = "";
+  replyBubble.textContent = "";
+  replyTime.textContent = "";
+  replyBubbleWrap.className = "bubble bubble-out bubble-decision is-hidden";
+
+  if (!currentMessage) {
+    statusMount.innerHTML = `<span class="status-chip status-muted">ממתין להודעה</span>`;
+    summaryMount.innerHTML = `<p class="summary-copy">ברגע שתכתב כאן הודעה, נראה את ההחלטה ואת התשובה המוצעת.</p>`;
+    return;
+  }
 
   try {
-    const result = await evaluateMessage(state.message);
+    const result = await evaluateMessage(currentMessage);
     const meta = statusMeta(result.status);
+    const reply = buildReply(result);
 
-    statusMount.innerHTML = `
-      <div class="status-card status-${meta.tone}">
-        <span class="status-label">${meta.label}</span>
-        <p>${result.reason}</p>
+    statusMount.innerHTML = `<span class="status-chip status-${meta.tone}">${meta.label}</span>`;
+    summaryMount.innerHTML = `
+      <div class="summary-stack">
+        <p class="summary-copy">${result.reason}</p>
+        <p class="summary-note">${buildSecondaryNote(result)}</p>
       </div>
     `;
+    factsMount.innerHTML = renderFacts(result);
 
-    const facts = [
-      { label: "זוהה כלי", value: result.instrumentMatch ? "כן" : "לא" },
-      { label: "זוהתה בקשת עזרה", value: result.helpIntent ? "כן" : "לא" },
-      { label: "פוסטקוד", value: result.postcode || "לא זוהה" },
-      {
-        label: "טווח",
-        value:
-          typeof result.distanceKm === "number"
-            ? `${result.distanceKm.toFixed(1)} ק"מ, סף ${state.maxAirDistanceKm}`
-            : "לא חושב"
-      }
-    ];
-
-    factsMount.innerHTML = facts
-      .map(
-        (fact) => `
-          <article class="fact-card">
-            <span>${fact.label}</span>
-            <strong>${fact.value}</strong>
-          </article>
-        `
-      )
-      .join("");
-
-    replyOutput.textContent = buildReply(result);
+    replyBubble.textContent = reply;
+    replyTime.textContent = formatTime();
+    replyBubbleWrap.className = `bubble bubble-out bubble-decision ${result.status === "ignore" ? "decision-muted" : ""}`;
   } catch (error) {
-    statusMount.innerHTML = `
-      <div class="status-card status-warn">
-        <span class="status-label">שגיאת בדיקה</span>
-        <p>${error.message}</p>
+    statusMount.innerHTML = `<span class="status-chip status-warn">שגיאת בדיקה</span>`;
+    summaryMount.innerHTML = `
+      <div class="summary-stack">
+        <p class="summary-copy">${error.message}</p>
+        <p class="summary-note">בדוק שהפוסטקוד בריטי וכתוב נכון, ואז נסה שוב.</p>
       </div>
     `;
-
     factsMount.innerHTML = `
       <article class="fact-card">
-        <span>מה קרה</span>
-        <strong>לא הצלחתי לבדוק את הפוסטקוד כרגע</strong>
+        <span>מצב</span>
+        <strong>לא הצלחתי להשלים את הבדיקה</strong>
       </article>
     `;
-
-    replyOutput.textContent = "נסה שוב בעוד רגע, או בדוק שהפוסטקוד הוא בריטי וכתוב נכון.";
+    replyBubble.textContent = "נסה שוב בעוד רגע, או כתוב פוסטקוד בריטי תקין.";
+    replyTime.textContent = formatTime();
+    replyBubbleWrap.className = "bubble bubble-out bubble-decision decision-muted";
   }
 }
 
