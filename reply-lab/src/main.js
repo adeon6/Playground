@@ -34,12 +34,12 @@ const examples = [
     message: "מחפש בסיסט להופעה בשבוע הבא ב-TW12 1YU. יש חזרה אחת לפני"
   },
   {
-    label: "חסר פוסטקוד",
-    message: "צריך בסיסט להקלטה קצרה בשבוע הבא, אתה פנוי?"
+    label: "מקום בלי פוסטקוד",
+    message: "מחפש בסיסט להופעה באזור Old Street בשבוע הבא"
   },
   {
-    label: "רחוק מדי",
-    message: "מחפשת מורה לבס באזור BR3 3SR לשיעורים קבועים"
+    label: "וייב של אזור",
+    message: "Need a bass dep at Wembley on Friday night"
   },
   {
     label: "צ'אט רגיל",
@@ -70,13 +70,40 @@ function extractUkPostcode(text) {
   return match ? match[1].toUpperCase().replace(/\s+/g, " ").trim() : null;
 }
 
+function extractAreaHint(text) {
+  const normalized = normalizeText(text);
+  const patterns = [
+    /(?:around|near|at|in)\s+([A-Za-z][A-Za-z\s'-]{2,40})/i,
+    /(?:באזור|ליד|ב)\s+([A-Za-z][A-Za-z\s'-]{2,40})/i,
+    /(?:באזור|ליד)\s+([\u0590-\u05FF][\u0590-\u05FF\s"'-]{1,40})/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (!match?.[1]) {
+      continue;
+    }
+
+    const candidate = match[1]
+      .replace(/\b(on|for|with|this|next|בשבוע|ביום|עם|של)\b.*$/i, "")
+      .replace(/[.,!?]+$/g, "")
+      .trim();
+
+    if (candidate.length >= 3) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
 async function lookupPostcode(postcode) {
-  const normalized = postcode.toUpperCase().replace(/\s+/g, "");
+  const normalized = `postcode:${postcode.toUpperCase().replace(/\s+/g, "")}`;
   if (state.cache.has(normalized)) {
     return state.cache.get(normalized);
   }
 
-  const response = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(normalized)}`);
+  const response = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode.toUpperCase().replace(/\s+/g, ""))}`);
   const payload = await response.json();
   if (!response.ok || !payload?.result) {
     throw new Error(`לא הצלחתי לזהות את הפוסטקוד ${postcode}`);
@@ -85,6 +112,31 @@ async function lookupPostcode(postcode) {
   const coords = {
     latitude: payload.result.latitude,
     longitude: payload.result.longitude
+  };
+  state.cache.set(normalized, coords);
+  return coords;
+}
+
+async function lookupAreaHint(areaHint) {
+  const normalized = `place:${areaHint.toLowerCase()}`;
+  if (state.cache.has(normalized)) {
+    return state.cache.get(normalized);
+  }
+
+  const query = `${areaHint}, London, UK`;
+  const response = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=gb&q=${encodeURIComponent(query)}`
+  );
+  const payload = await response.json();
+  if (!response.ok || !Array.isArray(payload) || !payload.length) {
+    throw new Error(`לא הצלחתי להבין את האזור "${areaHint}"`);
+  }
+
+  const first = payload[0];
+  const coords = {
+    latitude: Number(first.lat),
+    longitude: Number(first.lon),
+    label: first.display_name
   };
   state.cache.set(normalized, coords);
   return coords;
@@ -107,6 +159,7 @@ function haversineDistanceKm(start, end) {
 
 async function evaluateMessage(message) {
   const postcode = extractUkPostcode(message);
+  const areaHint = postcode ? null : extractAreaHint(message);
   const instrumentMatch = containsAnyKeyword(message, state.instrumentKeywords);
   const helpIntent = containsAnyKeyword(message, state.helpKeywords);
 
@@ -116,26 +169,37 @@ async function evaluateMessage(message) {
       instrumentMatch,
       helpIntent,
       postcode,
+      areaHint,
       reason: !instrumentMatch ? "לא זוהה קשר ברור לבס" : "זו נראית שיחה רגילה, לא פנייה לעזרה"
     };
   }
 
-  if (!postcode) {
+  if (!postcode && !areaHint) {
     return {
       status: "ask-postcode",
       instrumentMatch,
       helpIntent,
       postcode,
-      reason: "זו נראית פנייה אמיתית, אבל חסר פוסטקוד"
+      areaHint,
+      reason: "זו נראית פנייה אמיתית, אבל חסר מיקום ברור"
     };
   }
 
-  const [homeCoords, leadCoords] = await Promise.all([
-    lookupPostcode(state.homePostcode),
-    lookupPostcode(postcode)
-  ]);
+  const homeCoords = await lookupPostcode(state.homePostcode);
 
-  const distanceKm = haversineDistanceKm(homeCoords, leadCoords);
+  let targetCoords;
+  let locationLabel = postcode;
+  let locationType = "postcode";
+
+  if (postcode) {
+    targetCoords = await lookupPostcode(postcode);
+  } else {
+    targetCoords = await lookupAreaHint(areaHint);
+    locationLabel = areaHint;
+    locationType = "area";
+  }
+
+  const distanceKm = haversineDistanceKm(homeCoords, targetCoords);
   const inRange = distanceKm <= state.maxAirDistanceKm;
 
   return {
@@ -143,8 +207,11 @@ async function evaluateMessage(message) {
     instrumentMatch,
     helpIntent,
     postcode,
+    areaHint,
     distanceKm,
     inRange,
+    locationLabel,
+    locationType,
     reason: inRange ? "נראה באזור ולכן רלוונטי" : "נראה רחוק מדי כרגע"
   };
 }
@@ -155,7 +222,7 @@ function buildReply(result) {
   }
 
   if (result.status === "ask-postcode") {
-    return "היי, בשמחה. כדי להבין אם זה רלוונטי לי, אפשר לשלוח גם את הפוסטקוד של המקום?";
+    return "היי, בשמחה. כדי להבין אם זה רלוונטי לי, אפשר לשלוח גם פוסטקוד או אזור מדויק?";
   }
 
   if (result.status === "out-of-range") {
@@ -167,11 +234,13 @@ function buildReply(result) {
 
 function buildSecondaryNote(result) {
   if (result.status === "reply") {
-    return "ההודעה נראית כמו ליד אמיתי, עם כלי רלוונטי ופוסטקוד בתוך הטווח שהגדרת.";
+    return result.locationType === "area"
+      ? "גם בלי פוסטקוד, המערכת הצליחה להבין את האזור הכללי ולבדוק אם הוא נראה קרוב מספיק."
+      : "ההודעה נראית כמו ליד אמיתי, עם כלי רלוונטי ומיקום שנמצא בטווח שהגדרת.";
   }
 
   if (result.status === "ask-postcode") {
-    return "כאן כדאי לאשר עניין, אבל קודם לבקש מיקום כדי לדעת אם בכלל להמשיך.";
+    return "כאן כדאי לאשר עניין, אבל קודם לבקש מיקום ברור כדי לדעת אם בכלל להמשיך.";
   }
 
   if (result.status === "out-of-range") {
@@ -186,7 +255,7 @@ function statusMeta(status) {
     return { label: "נשלחת תשובה", tone: "good" };
   }
   if (status === "ask-postcode") {
-    return { label: "מבקשים פוסטקוד", tone: "warn" };
+    return { label: "מבקשים מיקום", tone: "warn" };
   }
   if (status === "out-of-range") {
     return { label: "לא שולחים אוטומטית", tone: "muted" };
@@ -207,14 +276,14 @@ function renderShell() {
           <h1>סימולטור תשובות שנראה כמו וואטסאפ אמיתי</h1>
           <p class="lede">
             גל יכול לכתוב כאן הודעה כאילו היא נכנסה אליך, ולראות מיד מה המערכת תעשה:
-            להתעלם, לבקש פוסטקוד, או להציע תשובה מלאה בשפה טבעית.
+            להתעלם, לבקש מיקום, או להציע תשובה מלאה בשפה טבעית.
           </p>
         </div>
 
         <div class="hero-card">
           <p class="hero-kicker">מוכן לשיתוף</p>
           <strong>לינק אחד, בלי התקנה</strong>
-          <span>בודק בסיסטים לפי הודעה, פוסטקוד וטווח שהגדרת</span>
+          <span>בודק הודעות לפי כלי, כוונת עזרה, ופוסטקוד או אזור כללי כמו Old Street או Wembley</span>
         </div>
       </section>
 
@@ -247,7 +316,7 @@ function renderShell() {
             </div>
 
             <div class="composer">
-              <textarea id="messageInput" rows="4" placeholder="למשל: מחפש בסיסט להופעה ב-TW12 1YU בשבוע הבא"></textarea>
+              <textarea id="messageInput" rows="4" placeholder="למשל: מחפש בסיסט באזור Old Street בשבוע הבא"></textarea>
               <button id="copyReply" type="button" class="send-btn">העתק תשובה</button>
             </div>
           </div>
@@ -349,15 +418,17 @@ function renderFacts(result) {
       value: result.helpIntent ? "כן" : "לא"
     },
     {
-      label: "פוסטקוד",
-      value: result.postcode || "לא זוהה"
+      label: "מיקום שזוהה",
+      value: result.postcode || result.areaHint || "לא זוהה"
     },
     {
-      label: "סינון אזורי",
+      label: "איך זה הובן",
       value:
-        typeof result.distanceKm === "number"
-          ? `${result.distanceKm.toFixed(1)} ק"מ מול סף ${state.maxAirDistanceKm}`
-          : "לא חושב כרגע"
+        result.locationType === "postcode"
+          ? "לפי פוסטקוד"
+          : result.locationType === "area"
+            ? "לפי אזור/לנדמרק"
+            : "עדיין לא"
     }
   ];
 
@@ -388,7 +459,7 @@ async function updateAnalysis() {
   incomingTime.textContent = formatTime();
 
   statusMount.innerHTML = `<span class="status-chip status-loading">מחשב...</span>`;
-  summaryMount.innerHTML = `<p class="summary-copy">בודק אם זו פנייה אמיתית, אם יש פוסטקוד, ואם היא בטווח שהגדרת.</p>`;
+  summaryMount.innerHTML = `<p class="summary-copy">בודק אם זו פנייה אמיתית, ואם יש פוסטקוד או אזור שאפשר להבין ממנו מיקום.</p>`;
   factsMount.innerHTML = "";
   replyBubble.textContent = "";
   replyTime.textContent = "";
@@ -422,16 +493,16 @@ async function updateAnalysis() {
     summaryMount.innerHTML = `
       <div class="summary-stack">
         <p class="summary-copy">${error.message}</p>
-        <p class="summary-note">בדוק שהפוסטקוד בריטי וכתוב נכון, ואז נסה שוב.</p>
+        <p class="summary-note">בדוק שהמיקום כתוב ברור, למשל פוסטקוד בריטי או אזור כמו Old Street.</p>
       </div>
     `;
     factsMount.innerHTML = `
       <article class="fact-card">
         <span>מצב</span>
-        <strong>לא הצלחתי להשלים את הבדיקה</strong>
+        <strong>לא הצלחתי להשלים את בדיקת המיקום</strong>
       </article>
     `;
-    replyBubble.textContent = "נסה שוב בעוד רגע, או כתוב פוסטקוד בריטי תקין.";
+    replyBubble.textContent = "נסה שוב בעוד רגע, או כתוב פוסטקוד בריטי או אזור ברור בלונדון.";
     replyTime.textContent = formatTime();
     replyBubbleWrap.className = "bubble bubble-out bubble-decision decision-muted";
   }
