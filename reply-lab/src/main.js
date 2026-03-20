@@ -31,7 +31,7 @@ const helpKeywordsDefault = [
 const examples = [
   {
     label: "הופעה קרובה",
-    message: "מחפש בסיסט להופעה בשבוע הבא ב-TW12 1YU. יש חזרה אחת לפני"
+    message: "מחפש בסיסט להופעה בשבוע הבא ב-N1 6FB. יש חזרה אחת לפני"
   },
   {
     label: "מקום בלי פוסטקוד",
