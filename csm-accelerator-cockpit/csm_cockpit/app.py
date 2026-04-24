@@ -69,8 +69,9 @@ async def home(request: Request, run_id: str | None = None):
         readiness = calculate_readiness(manifest, sections)
 
     return templates.TemplateResponse(
-        "index.html",
-        {
+        request=request,
+        name="index.html",
+        context={
             "request": request,
             "sections": sections,
             "runs": runs,
@@ -166,4 +167,3 @@ async def sync_docs(run_id: str, confirmation: str = Form("")):
 @app.get("/health")
 async def health():
     return {"status": "ok", "runs_dir": str(RUNS_DIR)}
-
