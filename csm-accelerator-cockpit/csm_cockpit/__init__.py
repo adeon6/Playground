@@ -1,0 +1,2 @@
+"""CSM Accelerator Cockpit package."""
+

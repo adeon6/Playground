@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="hero">
+  <div>
+    <p class="eyebrow">Accelerator Projects V1</p>
+    <h1>CSM Accelerator Cockpit</h1>
+    <p class="hero-copy">
+      A guided discovery front door for Jon's accelerator chain: capture what the CSM heard,
+      compare it with transcript evidence, approve the SOP handoff, then generate the docs.
+    </p>
+  </div>
+  <div class="hero-panel">
+    {% if readiness %}
+      <span class="score">{{ readiness.overall_pct }}%</span>
+      <span class="score-label">overall readiness</span>
+      <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
+    {% else %}
+      <span class="score">V1</span>
+      <span class="score-label">local prototype</span>
+      <span class="gate blocked">no active run</span>
+    {% endif %}
+  </div>
+</header>
+
+<main class="grid">
+  <aside class="rail">
+    <section class="card">
+      <h2>Start A Run</h2>
+      <form action="/runs" method="post" class="stack">
+        <label>Customer
+          <input name="customer_name" value="M&amp;T Bank" placeholder="Customer name">
+        </label>
+        <label>Project
+          <input name="project_name" value="Geo-Spatial App Discovery" placeholder="Use case / accelerator">
+        </label>
+        <label>CSM
+          <input name="csm_name" placeholder="CSM name">
+        </label>
+        <button type="submit">Create run</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Existing Runs</h2>
+      {% if runs %}
+        <div class="run-list">
+          {% for run in runs %}
+            <a class="run-link {% if manifest and run.run_id == manifest.run_id %}active{% endif %}" href="/?run_id={{ run.run_id }}">
+              <strong>{{ run.customer_name }}</strong>
+              <span>{{ run.project_name }}</span>
+              <small>{{ run.run_id }}</small>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted">No runs yet. Create one to begin.</p>
+      {% endif %}
+    </section>
+
+    <section class="card note">
+      <h2>Storage</h2>
+      <p>Run manifests and generated docs are stored under:</p>
+      <code>{{ runs_dir }}</code>
+      <p>Starter docs are only changed by the explicit sync action:</p>
+      <code>{{ starter_docs_dir }}</code>
+    </section>
+  </aside>
+
+  <section class="workbench">
+    {% if not manifest %}
+      <section class="empty-state">
+        <h2>Create the first run</h2>
+        <p>
+          This cockpit is intentionally human-gated. The CSM captures answers first, the transcript checks them,
+          and only approved SOP content moves toward workflow build.
+        </p>
+      </section>
+    {% else %}
+      <section class="card run-header">
+        <div>
+          <p class="eyebrow">Active Run</p>
+          <h2>{{ manifest.customer_name }} - {{ manifest.project_name }}</h2>
+          <p class="muted">Run ID: <code>{{ manifest.run_id }}</code></p>
+        </div>
+        <div class="mini-metrics">
+          <div><strong>{{ readiness.capture_pct }}%</strong><span>capture</span></div>
+          <div><strong>{{ readiness.evidence_pct }}%</strong><span>evidence</span></div>
+          <div><strong>{{ readiness.approval_pct }}%</strong><span>approval</span></div>
+          <div><strong>{{ readiness.artifact_pct }}%</strong><span>artifacts</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">1. Guided Call</p>
+            <h2>Scripted Capture Checklist</h2>
+          </div>
+          <span class="pill">CSM owned</span>
+        </div>
+        <form action="/runs/{{ manifest.run_id }}/capture" method="post">
+          <div class="section-table">
+            {% for section in sections %}
+              {% set item = manifest.capture.get(section.id, {}) %}
+              {% set analysis = manifest.analysis.get(section.id, {}) %}
+              <article class="section-row">
+                <div class="section-meta">
+                  <strong>{{ section.label }}</strong>
+                  {% if section.required %}
+                    <span class="required">SOP gate</span>
+                  {% else %}
+                    <span class="optional">supporting</span>
+                  {% endif %}
+                  <p>{{ section.prompt }}</p>
+                  <small>Capture: {{ section.capture_fields | join(", ") }}</small>
+                </div>
+                <div class="section-controls">
+                  <select name="status_{{ section.id }}">
+                    {% for value, label in capture_statuses.items() %}
+                      <option value="{{ value }}" {% if item.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  <textarea name="notes_{{ section.id }}" placeholder="CSM notes, facts, assumptions, or follow-ups">{{ item.notes }}</textarea>
+                  <span class="evidence {{ analysis.status or 'not_run' }}">
+                    {{ evidence_statuses.get(analysis.status or 'not_run', 'Not run') }}
+                  </span>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+          <button type="submit">Save guided capture</button>
+        </form>
+      </section>
+
+      <section class="card split-card">
+        <div>
+          <p class="eyebrow">2. Transcript Review</p>
+          <h2>Attach Evidence</h2>
+          <p class="muted">
+            Upload a DOCX transcript, or use the M&amp;T demo transcript. The app stores a copy in the run folder,
+            extracts text, and scores each discovery section.
+          </p>
+          {% if manifest.transcript.stored_path %}
+            <p class="success">Current transcript: <code>{{ manifest.transcript.stored_path }}</code></p>
+          {% endif %}
+        </div>
+        <form action="/runs/{{ manifest.run_id }}/transcript" method="post" enctype="multipart/form-data" class="stack">
+          <label>Upload DOCX transcript
+            <input type="file" name="transcript_file" accept=".docx">
+          </label>
+          <label>Or transcript path
+            <input name="transcript_path" value="{% if default_transcript_exists %}{{ default_transcript_path }}{% endif %}">
+          </label>
+          <button type="submit">Analyze transcript</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">3. Human Approval</p>
+            <h2>Evidence Playback</h2>
+          </div>
+          <span class="pill">human gate</span>
+        </div>
+        <form action="/runs/{{ manifest.run_id }}/approve" method="post">
+          <div class="approval-grid">
+            {% for section in sections %}
+              {% set item = manifest.capture.get(section.id, {}) %}
+              {% set analysis = manifest.analysis.get(section.id, {}) %}
+              <article class="approval-card">
+                <label class="approve-line">
+                  <input type="checkbox" name="approved_{{ section.id }}" {% if item.approved %}checked{% endif %}>
+                  <span>Approve {{ section.label }}</span>
+                </label>
+                <span class="evidence {{ analysis.status or 'not_run' }}">
+                  {{ evidence_statuses.get(analysis.status or 'not_run', 'Not run') }}
+                </span>
+                <p>{{ analysis.recommendation or "Transcript analysis has not run yet." }}</p>
+                {% if analysis.evidence %}
+                  <details>
+                    <summary>Evidence snippets</summary>
+                    {% for evidence in analysis.evidence %}
+                      <blockquote>{{ evidence.snippet }}</blockquote>
+                    {% endfor %}
+                  </details>
+                {% endif %}
+              </article>
+            {% endfor %}
+          </div>
+          <button type="submit">Save approvals</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">4. Artifact Dashboard</p>
+            <h2>Docs And Workflow Gate</h2>
+          </div>
+          <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
+        </div>
+        <div class="artifact-grid">
+          {% for artifact in doc_artifacts %}
+            {% set item = manifest.artifacts.get(artifact, {}) %}
+            <article class="artifact {% if item.exists %}done{% endif %}">
+              <strong>{{ artifact }}</strong>
+              <span>{{ item.status or "not_generated" }}</span>
+              {% if item.path %}<code>{{ item.path }}</code>{% endif %}
+            </article>
+          {% endfor %}
+        </div>
+        {% if readiness.blockers %}
+          <div class="blockers">
+            <h3>Workflow build blocked by:</h3>
+            <ul>
+              {% for blocker in readiness.blockers %}
+                <li>{{ blocker }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% else %}
+          <p class="success">SOP gate is ready. This run can move to the workflow-builder path.</p>
+        {% endif %}
+        <div class="actions">
+          <form action="/runs/{{ manifest.run_id }}/generate-docs" method="post">
+            <button type="submit">Generate / Refresh Docs</button>
+          </form>
+          <form action="/runs/{{ manifest.run_id }}/sync-docs" method="post" class="sync-form">
+            <input name="confirmation" placeholder="Type SYNC">
+            <button type="submit" class="secondary">Sync into starter docs</button>
+          </form>
+        </div>
+      </section>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}
+

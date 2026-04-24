@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CSM Accelerator Cockpit</title>
+    <style>
+      :root {
+        --ink: #13202d;
+        --muted: #647181;
+        --paper: #fffaf0;
+        --navy: #0d3153;
+        --teal: #0f766e;
+        --amber: #b86f12;
+        --line: rgba(19, 32, 45, 0.13);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Aptos Display", "Bahnschrift", "Segoe UI Variable Display", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 15% 12%, rgba(184, 111, 18, 0.20), transparent 28rem),
+          radial-gradient(circle at 85% 6%, rgba(15, 118, 110, 0.16), transparent 32rem),
+          linear-gradient(135deg, #f7efe0, #edf5f1);
+      }
+      main {
+        width: min(1040px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 48px 0;
+      }
+      .hero, .card {
+        border: 1px solid var(--line);
+        border-radius: 30px;
+        box-shadow: 0 22px 70px rgba(21, 31, 43, 0.10);
+      }
+      .hero {
+        padding: clamp(28px, 6vw, 64px);
+        color: #fff;
+        background: linear-gradient(135deg, rgba(13, 49, 83, 0.98), rgba(11, 85, 101, 0.94));
+      }
+      .eyebrow {
+        margin: 0 0 0.7rem;
+        color: #f3bd6c;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-weight: 800;
+        font-size: 0.76rem;
+      }
+      h1 {
+        margin: 0;
+        max-width: 760px;
+        font-size: clamp(2.8rem, 8vw, 6.8rem);
+        line-height: 0.92;
+        letter-spacing: -0.07em;
+      }
+      .hero p {
+        max-width: 780px;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 1.15rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 18px;
+      }
+      .card {
+        padding: 24px;
+        background: rgba(255, 255, 252, 0.86);
+      }
+      .card h2 { margin-top: 0; }
+      .muted { color: var(--muted); }
+      code {
+        display: block;
+        padding: 12px;
+        border-radius: 16px;
+        background: #efe8da;
+        overflow-wrap: anywhere;
+      }
+      a.button {
+        display: inline-flex;
+        margin-top: 12px;
+        padding: 0.9rem 1.1rem;
+        border-radius: 999px;
+        color: #fff;
+        background: var(--navy);
+        text-decoration: none;
+        font-weight: 800;
+      }
+      @media (max-width: 760px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <p class="eyebrow">Local Python App</p>
+        <h1>CSM Accelerator Cockpit</h1>
+        <p>
+          A guided discovery cockpit for CSMs. GitHub Pages can host this landing page,
+          but the real transcript upload app runs locally because it needs Python.
+        </p>
+      </section>
+      <section class="grid">
+        <article class="card">
+          <h2>How Jon Runs It</h2>
+          <p class="muted">Download the repo folder, then double-click:</p>
+          <code>csm-accelerator-cockpit/Start CSM Cockpit.bat</code>
+          <p>The launcher creates a local environment, starts the app, and opens the browser.</p>
+          <a class="button" href="./downloads/csm-accelerator-cockpit-local.zip">Download Local App ZIP</a>
+          <a class="button" href="https://github.com/adeon6/Playground/tree/main/csm-accelerator-cockpit">Open GitHub Folder</a>
+        </article>
+        <article class="card">
+          <h2>What Powers It</h2>
+          <p>
+            V1 uses an explainable local rules engine. It reads DOCX transcripts, maps transcript snippets
+            to Jon's discovery checklist, flags gaps, and gates doc generation behind human approval.
+          </p>
+          <p class="muted">No customer transcript is uploaded. The sample transcript is sanitized.</p>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
