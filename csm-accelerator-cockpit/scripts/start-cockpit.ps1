@@ -59,8 +59,8 @@ function Test-CockpitForThisFolder {
         return $false
     }
     try {
-        $home = Invoke-WebRequest -UseBasicParsing -Uri "$Url/" -TimeoutSec 3
-        return $home.StatusCode -eq 200 -and $home.Content.Contains("CSM Accelerator Cockpit")
+        $homeResponse = Invoke-WebRequest -UseBasicParsing -Uri "$Url/" -TimeoutSec 3
+        return $homeResponse.StatusCode -eq 200 -and $homeResponse.Content.Contains("CSM Accelerator Cockpit")
     } catch {
         return $false
     }
