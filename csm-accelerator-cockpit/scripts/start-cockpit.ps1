@@ -7,17 +7,76 @@ $LogFile = Join-Path $RuntimeDir "uvicorn.log"
 $ErrFile = Join-Path $RuntimeDir "uvicorn.err.log"
 $Url = "http://127.0.0.1:8765"
 
-function Test-Cockpit {
+$RequiredPaths = @(
+    "csm_cockpit\app.py",
+    "csm_cockpit\services.py",
+    "csm_cockpit\templates\index.html",
+    "csm_cockpit\templates\base.html",
+    "csm_cockpit\static\cockpit.css",
+    "sample_data\sanitized_geo_spatial_discovery.docx"
+)
+
+function Assert-CompleteExtraction {
+    $missing = @()
+    foreach ($relativePath in $RequiredPaths) {
+        $fullPath = Join-Path $Root $relativePath
+        if (-not (Test-Path $fullPath)) {
+            $missing += $relativePath
+        }
+    }
+
+    if ($missing.Count -gt 0) {
+        Write-Host "This app folder is incomplete. Missing required files:"
+        foreach ($item in $missing) {
+            Write-Host " - $item"
+        }
+        Write-Host ""
+        Write-Host "Delete this extracted folder, re-extract the ZIP into a fresh folder, then run this launcher again."
+        exit 1
+    }
+}
+
+function Get-CockpitHealth {
     try {
-        Invoke-WebRequest -UseBasicParsing -Uri "$Url/health" -TimeoutSec 2 | Out-Null
-        return $true
+        return Invoke-RestMethod -Uri "$Url/health" -TimeoutSec 2
+    } catch {
+        return $null
+    }
+}
+
+function Test-CockpitForThisFolder {
+    $health = Get-CockpitHealth
+    if ($null -eq $health) {
+        return $false
+    }
+    if ($health.app -ne "csm-accelerator-cockpit") {
+        return $false
+    }
+    if ($health.app_root -ne $Root) {
+        return $false
+    }
+    try {
+        $home = Invoke-WebRequest -UseBasicParsing -Uri "$Url/" -TimeoutSec 3
+        return $home.StatusCode -eq 200 -and $home.Content.Contains("CSM Accelerator Cockpit")
     } catch {
         return $false
     }
 }
 
+function Stop-StaleCockpitOnPort {
+    $listeners = Get-NetTCPConnection -LocalPort 8765 -State Listen -ErrorAction SilentlyContinue
+    foreach ($listener in $listeners) {
+        $process = Get-Process -Id $listener.OwningProcess -ErrorAction SilentlyContinue
+        if ($process -and $process.ProcessName -match "^python") {
+            Write-Host "Stopping stale cockpit/Python server on port 8765 (PID $($process.Id))..."
+            Stop-Process -Id $process.Id -Force
+        }
+    }
+}
+
 Set-Location $Root
 New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
+Assert-CompleteExtraction
 
 $VenvPython = Join-Path $Root ".venv\Scripts\python.exe"
 if (-not (Test-Path $VenvPython)) {
@@ -33,7 +92,8 @@ if (-not (Test-Path $VenvPython)) {
 Write-Host "Installing or refreshing app dependencies..."
 & $VenvPython -m pip install -r (Join-Path $Root "requirements.txt")
 
-if (-not (Test-Cockpit)) {
+if (-not (Test-CockpitForThisFolder)) {
+    Stop-StaleCockpitOnPort
     Write-Host "Starting CSM Accelerator Cockpit..."
     $arguments = @(
         "-m", "uvicorn",
@@ -54,7 +114,7 @@ if (-not (Test-Cockpit)) {
     $ready = $false
     for ($i = 0; $i -lt 30; $i++) {
         Start-Sleep -Milliseconds 500
-        if (Test-Cockpit) {
+        if (Test-CockpitForThisFolder) {
             $ready = $true
             break
         }
@@ -75,4 +135,3 @@ Write-Host "CSM Accelerator Cockpit is open at $Url"
 Write-Host "Use 'Stop CSM Cockpit.bat' when you are done."
 Write-Host ""
 Read-Host "Press Enter to close this launcher window"
-

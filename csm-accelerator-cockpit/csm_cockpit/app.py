@@ -15,6 +15,7 @@ from .services import (
     EVIDENCE_STATUSES,
     RUNS_DIR,
     STARTER_DOCS_DIR,
+    PROJECT_ROOT,
     attach_transcript_from_path,
     attach_uploaded_transcript,
     calculate_readiness,
@@ -166,4 +167,10 @@ async def sync_docs(run_id: str, confirmation: str = Form("")):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "runs_dir": str(RUNS_DIR)}
+    return {
+        "status": "ok",
+        "app": "csm-accelerator-cockpit",
+        "version": "0.2.0",
+        "app_root": str(PROJECT_ROOT),
+        "runs_dir": str(RUNS_DIR),
+    }

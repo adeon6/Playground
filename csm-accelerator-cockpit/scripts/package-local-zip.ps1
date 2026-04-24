@@ -3,9 +3,10 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 $RepoRoot = Split-Path -Parent $Root
 $PackageName = "csm-accelerator-cockpit-local.zip"
+$PackageRootName = "csm-accelerator-cockpit-v2"
 $DownloadsDir = Join-Path $RepoRoot "pages\csm-cockpit\downloads"
 $StagingRoot = Join-Path $RepoRoot ".codex-temp\csm-cockpit-package"
-$StagingApp = Join-Path $StagingRoot "csm-accelerator-cockpit"
+$StagingApp = Join-Path $StagingRoot $PackageRootName
 $ZipPath = Join-Path $DownloadsDir $PackageName
 
 if (Test-Path $StagingRoot) {
@@ -39,6 +40,5 @@ if (Test-Path $runsDir) {
 if (Test-Path $ZipPath) {
     Remove-Item -LiteralPath $ZipPath -Force
 }
-Compress-Archive -Path (Join-Path $StagingRoot "csm-accelerator-cockpit") -DestinationPath $ZipPath -Force
+Compress-Archive -Path (Join-Path $StagingRoot $PackageRootName) -DestinationPath $ZipPath -Force
 Write-Host "Created $ZipPath"
-

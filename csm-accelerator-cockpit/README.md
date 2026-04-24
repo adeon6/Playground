@@ -7,10 +7,11 @@ It is intentionally not hosted on GitHub Pages because the real app needs Python
 ## Quick Start
 
 1. Download or clone this folder.
-2. Double-click `Start CSM Cockpit.bat`.
-3. Wait for the browser to open.
-4. Create a run, save the guided capture, and analyze the sanitized sample transcript.
-5. Double-click `Stop CSM Cockpit.bat` when finished.
+2. Extract the ZIP into a fresh folder. The current ZIP opens as `csm-accelerator-cockpit-v2`.
+3. Double-click `Start CSM Cockpit.bat`.
+4. Wait for the browser to open.
+5. Create a run, save the guided capture, and analyze the sanitized sample transcript.
+6. Double-click `Stop CSM Cockpit.bat` when finished.
 
 The launcher creates a private `.venv` folder, installs dependencies from `requirements.txt`, starts the local FastAPI app, and opens `http://127.0.0.1:8765`.
 
@@ -51,4 +52,3 @@ Run tests:
 ```powershell
 python -m unittest discover csm_cockpit/tests
 ```
-
