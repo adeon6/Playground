@@ -13,7 +13,10 @@ $RequiredPaths = @(
     "csm_cockpit\templates\index.html",
     "csm_cockpit\templates\base.html",
     "csm_cockpit\static\cockpit.css",
-    "sample_data\sanitized_geo_spatial_discovery.docx"
+    "sample_data\sanitized_geo_spatial_discovery.md",
+    "process_pack\README.md",
+    "process_pack\sequencer\sequence_config.json",
+    "process_pack\03_workflow_build\sop_to_alteryx_super_prompt_pack.md"
 )
 
 function Assert-CompleteExtraction {

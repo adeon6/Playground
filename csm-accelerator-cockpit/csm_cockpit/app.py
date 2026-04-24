@@ -9,21 +9,22 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .services import (
+    APP_VERSION,
     CAPTURE_STATUSES,
     DEFAULT_TRANSCRIPT_PATH,
     DOC_ARTIFACTS,
     EVIDENCE_STATUSES,
-    RUNS_DIR,
-    STARTER_DOCS_DIR,
     PROJECT_ROOT,
     attach_transcript_from_path,
     attach_uploaded_transcript,
+    artifact_cards,
     calculate_readiness,
     generate_docs,
     list_manifests,
     load_manifest,
     load_question_bank,
     new_manifest,
+    process_stages,
     run_dir,
     save_manifest,
     static_root,
@@ -34,7 +35,7 @@ from .services import (
 )
 
 
-app = FastAPI(title="CSM Accelerator Cockpit V1")
+app = FastAPI(title="CSM Accelerator Cockpit V2")
 app.mount("/static", StaticFiles(directory=static_root()), name="static")
 templates = Jinja2Templates(directory=template_root())
 
@@ -81,10 +82,11 @@ async def home(request: Request, run_id: str | None = None):
             "capture_statuses": CAPTURE_STATUSES,
             "evidence_statuses": EVIDENCE_STATUSES,
             "doc_artifacts": DOC_ARTIFACTS,
+            "artifact_cards": artifact_cards(manifest) if manifest else [],
+            "process_stages": process_stages(),
             "default_transcript_path": str(DEFAULT_TRANSCRIPT_PATH),
             "default_transcript_exists": DEFAULT_TRANSCRIPT_PATH.exists(),
-            "runs_dir": str(RUNS_DIR),
-            "starter_docs_dir": str(STARTER_DOCS_DIR),
+            "app_version": APP_VERSION,
         },
     )
 
@@ -128,8 +130,10 @@ async def analyze_transcript(
         elif transcript_path.strip():
             manifest = attach_transcript_from_path(manifest, Path(transcript_path.strip()), sections)
         else:
-            raise HTTPException(status_code=400, detail="Attach a DOCX file or provide a transcript path.")
+            raise HTTPException(status_code=400, detail="Attach a DOCX, Markdown, or text transcript.")
     except FileNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     save_manifest(manifest)
@@ -170,7 +174,7 @@ async def health():
     return {
         "status": "ok",
         "app": "csm-accelerator-cockpit",
-        "version": "0.2.0",
+        "version": APP_VERSION,
         "app_root": str(PROJECT_ROOT),
-        "runs_dir": str(RUNS_DIR),
+        "process": "Jon accelerator operating system aligned",
     }

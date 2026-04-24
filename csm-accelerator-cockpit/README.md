@@ -1,8 +1,8 @@
 # CSM Accelerator Cockpit
 
-This is a local, double-clickable prototype for helping a CSM run an accelerator discovery process.
+This is a local, double-clickable prototype for helping a CSM run Jon's accelerator discovery process.
 
-It is intentionally not hosted on GitHub Pages because the real app needs Python to read DOCX transcripts, score evidence, store run manifests, and generate markdown handoff documents. GitHub hosts the source and update history; the app runs locally on the user's machine.
+GitHub Pages hosts the landing page and downloadable ZIP. The real app runs locally because transcript handling, project files, and generated SOP artifacts should stay on the user's machine.
 
 ## Quick Start
 
@@ -10,33 +10,53 @@ It is intentionally not hosted on GitHub Pages because the real app needs Python
 2. Extract the ZIP into a fresh folder. The current ZIP opens as `csm-accelerator-cockpit-v2`.
 3. Double-click `Start CSM Cockpit.bat`.
 4. Wait for the browser to open.
-5. Create a run, save the guided capture, and analyze the sanitized sample transcript.
+5. Create a new accelerator project, save guided capture, attach a transcript, approve sections, and generate docs.
 6. Double-click `Stop CSM Cockpit.bat` when finished.
 
-The launcher creates a private `.venv` folder, installs dependencies from `requirements.txt`, starts the local FastAPI app, and opens `http://127.0.0.1:8765`.
+The launcher creates a private `.venv`, installs dependencies from `requirements.txt`, starts the local FastAPI app, and opens `http://127.0.0.1:8765`.
 
 ## What Is The Brain?
 
-V1 uses an explainable local rules engine, not a hidden AI model.
+V2 uses an explainable local rules engine, not a hidden hosted AI model.
 
-- The app reads the DOCX transcript with `python-docx`.
-- It loads the discovery checklist from the template if available, otherwise from the built-in question bank.
-- Each section has keywords and expected capture fields.
-- Transcript snippets are scored against those keywords.
-- Each section is marked as `supported`, `weak evidence`, `missing`, or `conflicting`.
-- The CSM still has the final approval gate before docs are generated.
+- It accepts `.docx`, `.md`, and `.txt` transcripts.
+- It maps transcript evidence to Jon's section-level discovery model.
+- It summarizes why a section appears supported, weak, missing, or conflicting.
+- It treats "customer does not know yet" as a valid discovery outcome that goes to the gap log.
+- It requires human approval before the SOP is treated as workflow-build ready.
 
-An optional OpenAI extraction layer can be added later, but it is deliberately not required for this shareable V1.
+Optional OpenAI-assisted evidence extraction can be added later, but it is deliberately not required for this shareable prototype.
 
-## Generated Files
+## Jon Process Pack
 
-Each run is stored under:
+The app bundles Jon's latest accelerator operating-system files under `process_pack/`, including:
+
+- `01_discovery/accelerator_interview_script.md`
+- `02_sop_authoring/guided_sop_capture_template.md`
+- `03_workflow_build/sop_to_alteryx_super_prompt_pack.md`
+- `sequencer/sequence_config.json`
+
+The app uses those files as the methodology reference and prepares a Large-only workflow handoff prompt when the SOP gate is ready.
+
+## Generated Project Files
+
+Each project is stored locally under:
 
 ```text
-csm_cockpit/runs/<run-id>/
+csm_cockpit/runs/<project-id>/
 ```
 
-Generated handoff docs are written to the run folder first. The app only copies them into `starter_docs/` if the user explicitly types `SYNC` in the UI.
+Each project contains Jon's expected folders:
+
+```text
+docs/
+data/raw/
+data/generated/
+status/
+workflows/
+```
+
+Generated docs are written into the project folder first. The advanced `SYNC` action is intentionally hidden behind an expandable control and only copies generated docs into `starter_docs/` when explicitly requested.
 
 ## Developer Commands
 

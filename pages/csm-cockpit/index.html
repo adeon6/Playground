@@ -97,18 +97,18 @@
   <body>
     <main>
       <section class="hero">
-        <p class="eyebrow">Local Python App</p>
+        <p class="eyebrow">Local Python App · V2 Jon Process Aligned</p>
         <h1>CSM Accelerator Cockpit</h1>
         <p>
-          A guided discovery cockpit for CSMs. GitHub Pages can host this landing page,
-          but the real transcript upload app runs locally because it needs Python.
+          A guided discovery cockpit for CSMs. GitHub Pages hosts this landing page
+          and the ZIP, while the transcript app runs locally so customer content stays on the machine.
         </p>
       </section>
       <section class="grid">
         <article class="card">
           <h2>How Jon Runs It</h2>
           <p class="muted">Download the ZIP, extract the `csm-accelerator-cockpit-v2` folder, then double-click:</p>
-          <code>csm-accelerator-cockpit/Start CSM Cockpit.bat</code>
+          <code>csm-accelerator-cockpit-v2\Start CSM Cockpit.bat</code>
           <p>The launcher creates a local environment, starts the app, and opens the browser.</p>
           <a class="button" href="./downloads/csm-accelerator-cockpit-local.zip">Download Local App ZIP</a>
           <a class="button" href="https://github.com/adeon6/Playground/tree/main/csm-accelerator-cockpit">Open GitHub Folder</a>
@@ -116,8 +116,13 @@
         <article class="card">
           <h2>What Powers It</h2>
           <p>
-            V1 uses an explainable local rules engine. It reads DOCX transcripts, maps transcript snippets
-            to Jon's discovery checklist, flags gaps, and gates doc generation behind human approval.
+            V2 uses an explainable local rules engine. It reads DOCX, Markdown, or text transcripts,
+            maps evidence to Jon's section-level discovery model, creates the docs/status/workflows
+            project structure, and gates workflow handoff behind human approval.
+          </p>
+          <p>
+            The bundled process pack includes Jon's interview script, SOP templates, sequencer config,
+            and the Large-only workflow-build prompt pack.
           </p>
           <p class="muted">No customer transcript is uploaded. The sample transcript is sanitized.</p>
         </article>

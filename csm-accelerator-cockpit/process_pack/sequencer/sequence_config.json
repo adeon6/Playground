@@ -1,0 +1,110 @@
+﻿{
+  "version": "1.0",
+  "product": "Alteryx",
+  "entry_rule": {
+    "canonical_transcript_markdown": "docs/01_customer_discovery_conversation.md",
+    "optional_transcript_docx": "docs/01_customer_discovery_conversation.docx"
+  },
+  "project_structure": [
+    "docs",
+    "data/raw",
+    "data/generated",
+    "status",
+    "workflows"
+  ],
+  "artifacts": {
+    "guided_capture": "docs/02_guided_sop_capture.md",
+    "accelerator_sop": "docs/03_accelerator_sop.md",
+    "gap_log": "docs/sop_gap_log.md",
+    "architecture_assessment": "docs/sop_architecture_assessment.md",
+    "workflow_glob": "workflows/00_*.yxmd",
+    "status_file": "status/pipeline_status.json",
+    "log_file": "status/pipeline_log.md",
+    "prompt_file": "status/next_stage_prompt.md"
+  },
+  "reference_files": {
+    "runbook": "00_start_here/accelerator_sequence_runbook.md",
+    "operating_rule": "00_start_here/00_01-02-03_operating_rule.md",
+    "interview_script": "01_discovery/accelerator_interview_script.md",
+    "guided_capture_template": "02_sop_authoring/guided_sop_capture_template.md",
+    "guided_capture_to_sop_prompt": "02_sop_authoring/guided_capture_to_accelerator_sop_prompt.md",
+    "sop_template": "02_sop_authoring/accelerator_sop_template.md",
+    "workflow_build_prompt_pack": "03_workflow_build/sop_to_alteryx_super_prompt_pack.md"
+  },
+  "stages": [
+    {
+      "id": "01_discovery",
+      "label": "Discovery Evidence",
+      "required_inputs": [
+        "docs/01_customer_discovery_conversation.md"
+      ],
+      "outputs": [
+        "docs/01_customer_discovery_conversation.md"
+      ],
+      "pass_checks": [
+        "exists",
+        "non_empty"
+      ]
+    },
+    {
+      "id": "02_guided_capture",
+      "label": "Guided SOP Capture",
+      "required_inputs": [
+        "docs/01_customer_discovery_conversation.md"
+      ],
+      "outputs": [
+        "docs/02_guided_sop_capture.md"
+      ],
+      "pass_checks": [
+        "exists",
+        "non_empty",
+        "contains_confirmed_assumed_unknown"
+      ]
+    },
+    {
+      "id": "03_accelerator_sop",
+      "label": "Accelerator SOP",
+      "required_inputs": [
+        "docs/02_guided_sop_capture.md"
+      ],
+      "outputs": [
+        "docs/03_accelerator_sop.md",
+        "docs/sop_gap_log.md"
+      ],
+      "pass_checks": [
+        "exists",
+        "non_empty",
+        "contains_scope_outputs_validation"
+      ]
+    },
+    {
+      "id": "04_workflow_build",
+      "label": "Workflow Build",
+      "required_inputs": [
+        "docs/03_accelerator_sop.md"
+      ],
+      "outputs": [
+        "workflows/00_*.yxmd",
+        "docs/sop_architecture_assessment.md"
+      ],
+      "pass_checks": [
+        "workflow_exists",
+        "architecture_assessment_exists"
+      ]
+    },
+    {
+      "id": "05_review",
+      "label": "Review And Closeout",
+      "required_inputs": [
+        "docs/03_accelerator_sop.md"
+      ],
+      "outputs": [
+        "status/pipeline_status.json",
+        "status/pipeline_log.md"
+      ],
+      "pass_checks": [
+        "status_written"
+      ]
+    }
+  ]
+}
