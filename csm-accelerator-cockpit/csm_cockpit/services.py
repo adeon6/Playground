@@ -11,7 +11,7 @@ from typing import Any
 from docx import Document
 
 
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.4.0"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 COCKPIT_ROOT = Path(__file__).resolve().parent
@@ -67,6 +67,7 @@ PROJECT_FOLDERS = [
 
 REQUIRED_FOR_SOP_GATE = {
     "business_problem",
+    "value_realization",
     "current_process",
     "desired_outcome",
     "business_questions",
@@ -122,6 +123,13 @@ JON_SECTIONS = [
         ["problem", "pain", "challenge", "manual", "slow", "risk", "impact", "cost", "inconsistent", "trust"],
     ),
     Section(
+        "value_realization",
+        "Value Realization",
+        "Capture how the customer will recognise value, measure improvement, and justify the accelerator.",
+        ["Value driver", "Baseline", "Target benefit", "Measurement method", "Stakeholder value story"],
+        ["value", "benefit", "roi", "saving", "baseline", "measure", "metric", "improvement", "time saved", "efficiency"],
+    ),
+    Section(
         "current_process",
         "Current Process",
         "Describe the current-state process, handoffs, systems, spreadsheets, and known friction.",
@@ -164,15 +172,6 @@ JON_SECTIONS = [
         ["data", "field", "column", "entity", "grain", "row", "join", "key", "quality", "sample"],
     ),
     Section(
-        "known_unknowns",
-        "Known Unknowns",
-        "Record what the customer does not know yet so it becomes a gap-log item, not silent risk.",
-        ["Unknowns", "Open questions", "Assumptions", "Follow-ups", "Owner for answers"],
-        ["unknown", "not sure", "don't know", "to be confirmed", "assumption", "open question", "follow up"],
-        required=False,
-        gate_reason="Important for the gap log, but not required as positive evidence.",
-    ),
-    Section(
         "business_rules",
         "Business Rules",
         "Document definitions, calculations, thresholds, filters, joins, and exception-handling rules.",
@@ -201,15 +200,6 @@ JON_SECTIONS = [
         ["operational", "schedule", "refresh", "run", "owner", "handover", "deploy", "production", "support"],
         required=False,
         gate_reason="Supports implementation planning after the SOP is usable.",
-    ),
-    Section(
-        "close_playback",
-        "Close / Playback",
-        "Play back confirmed facts, assumptions, gaps, and next actions before the SOP is generated.",
-        ["Confirmed facts", "Assumptions", "Open gaps", "Next actions", "Approval state"],
-        ["playback", "recap", "summary", "confirmed", "assumption", "open question", "next step"],
-        required=False,
-        gate_reason="Human governance step.",
     ),
 ]
 
@@ -250,7 +240,7 @@ def load_sequence_config() -> dict[str, Any]:
 
 
 def load_question_bank(template_path: Path = QUESTION_TEMPLATE_DOCX) -> list[Section]:
-    # Jon's interview script is the source of truth for V2. The Word template is bundled
+    # Jon's interview script is the source of truth for V3. The Word template is bundled
     # for reference, but the app keeps section-level prompts stable for CSM usability.
     return JON_SECTIONS
 
@@ -782,6 +772,8 @@ def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str
         "Create a first-slice accelerator workflow only after the SOP gate is satisfied. The workflow should reflect approved customer facts, explicit assumptions, and known open gaps.\n\n",
         "## Scope And Business Outcome\n\n",
         manifest.get("capture", {}).get("scope_priorities", {}).get("notes") or "- Scope still requires CSM approval.\n",
+        "\n\n## Value Realization\n\n",
+        manifest.get("capture", {}).get("value_realization", {}).get("notes") or "- Value driver, baseline, and measurement approach still require approval.\n",
         "\n\n## Input Contract\n\n",
         manifest.get("capture", {}).get("source_systems", {}).get("notes") or "- Source systems, ownership, cadence, and access constraints still require approval.\n",
         "\n",
@@ -880,9 +872,32 @@ def sync_generated_docs(manifest: dict[str, Any]) -> dict[str, Any]:
     return manifest
 
 
+def delete_run(run_id: str) -> None:
+    target = run_dir(run_id).resolve()
+    root = RUNS_DIR.resolve()
+    if target == root or root not in target.parents:
+        raise ValueError("Refusing to delete a folder outside the cockpit runs directory.")
+    if target.exists():
+        shutil.rmtree(target)
+
+
 def artifact_cards(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     records = _refresh_artifact_records(manifest).get("artifacts", {})
     return [records[name] for name in [*DOC_ARTIFACTS, "status/next_stage_prompt.md"] if name in records]
+
+
+def artifact_file_path(run_id: str, artifact_key: str) -> Path:
+    manifest = load_manifest(run_id)
+    records = _refresh_artifact_records(manifest).get("artifacts", {})
+    key = artifact_key.replace("\\", "/")
+    record = records.get(key)
+    if not record or not record.get("exists"):
+        raise FileNotFoundError(f"Artifact not found: {artifact_key}")
+    path = Path(record["path"]).resolve()
+    project_dir = run_dir(run_id).resolve()
+    if project_dir != path and project_dir not in path.parents:
+        raise ValueError("Artifact path is outside the project folder.")
+    return path
 
 
 def process_stages() -> list[dict[str, Any]]:

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -18,7 +18,9 @@ from .services import (
     attach_transcript_from_path,
     attach_uploaded_transcript,
     artifact_cards,
+    artifact_file_path,
     calculate_readiness,
+    delete_run,
     generate_docs,
     list_manifests,
     load_manifest,
@@ -35,7 +37,7 @@ from .services import (
 )
 
 
-app = FastAPI(title="CSM Accelerator Cockpit V2")
+app = FastAPI(title="CSM Accelerator Cockpit V3")
 app.mount("/static", StaticFiles(directory=static_root()), name="static")
 templates = Jinja2Templates(directory=template_root())
 
@@ -51,9 +53,10 @@ def _manifest_or_404(run_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"Run not found: {run_id}") from exc
 
 
-def _redirect(run_id: str | None = None) -> RedirectResponse:
+def _redirect(run_id: str | None = None, anchor: str = "") -> RedirectResponse:
     suffix = f"?run_id={run_id}" if run_id else ""
-    return RedirectResponse(url=f"/{suffix}", status_code=303)
+    fragment = f"#{anchor}" if anchor else ""
+    return RedirectResponse(url=f"/{suffix}{fragment}", status_code=303)
 
 
 @app.get("/")
@@ -100,7 +103,7 @@ async def create_run(
     sections = _sections()
     manifest = new_manifest(customer_name, project_name, csm_name, sections)
     save_manifest(manifest)
-    return _redirect(manifest["run_id"])
+    return _redirect(manifest["run_id"], "transcript-review")
 
 
 @app.post("/runs/{run_id}/capture")
@@ -112,7 +115,7 @@ async def save_capture(run_id: str, request: Request):
     if manifest.get("transcript", {}).get("stored_path"):
         attach_transcript_from_path(manifest, Path(manifest["transcript"]["stored_path"]), sections)
     save_manifest(manifest)
-    return _redirect(run_id)
+    return _redirect(run_id, "guided-call")
 
 
 @app.post("/runs/{run_id}/transcript")
@@ -120,24 +123,26 @@ async def analyze_transcript(
     run_id: str,
     transcript_file: UploadFile | None = File(None),
     transcript_path: str = Form(""),
+    transcript_source: str = Form("upload"),
 ):
     sections = _sections()
     manifest = _manifest_or_404(run_id)
     try:
-        if transcript_file and transcript_file.filename:
+        if transcript_source == "sample":
+            source = Path(transcript_path.strip()) if transcript_path.strip() else DEFAULT_TRANSCRIPT_PATH
+            manifest = attach_transcript_from_path(manifest, source, sections)
+        elif transcript_file and transcript_file.filename:
             payload = await transcript_file.read()
             manifest = attach_uploaded_transcript(manifest, transcript_file.filename, payload, sections)
-        elif transcript_path.strip():
-            manifest = attach_transcript_from_path(manifest, Path(transcript_path.strip()), sections)
         else:
-            raise HTTPException(status_code=400, detail="Attach a DOCX, Markdown, or text transcript.")
+            raise HTTPException(status_code=400, detail="Choose upload and attach a transcript, or choose the bundled demo transcript.")
     except FileNotFoundError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     save_manifest(manifest)
-    return _redirect(run_id)
+    return _redirect(run_id, "transcript-review")
 
 
 @app.post("/runs/{run_id}/approve")
@@ -147,7 +152,7 @@ async def save_approvals(run_id: str, request: Request):
     form = dict(await request.form())
     update_approvals_from_form(manifest, form, sections)
     save_manifest(manifest)
-    return _redirect(run_id)
+    return _redirect(run_id, "human-approval")
 
 
 @app.post("/runs/{run_id}/generate-docs")
@@ -156,7 +161,7 @@ async def generate_run_docs(run_id: str):
     manifest = _manifest_or_404(run_id)
     manifest = generate_docs(manifest, sections)
     save_manifest(manifest)
-    return _redirect(run_id)
+    return _redirect(run_id, "artifact-dashboard")
 
 
 @app.post("/runs/{run_id}/sync-docs")
@@ -166,7 +171,30 @@ async def sync_docs(run_id: str, confirmation: str = Form("")):
         raise HTTPException(status_code=400, detail="Type SYNC to copy generated docs into the starter docs folder.")
     manifest = sync_generated_docs(manifest)
     save_manifest(manifest)
-    return _redirect(run_id)
+    return _redirect(run_id, "artifact-dashboard")
+
+
+@app.post("/runs/{run_id}/delete")
+async def delete_project(run_id: str, confirmation: str = Form("")):
+    _manifest_or_404(run_id)
+    if confirmation.strip().upper() != "DELETE":
+        raise HTTPException(status_code=400, detail="Type DELETE to remove this generated project.")
+    try:
+        delete_run(run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _redirect()
+
+
+@app.get("/runs/{run_id}/artifacts/{artifact_key:path}")
+async def get_artifact(run_id: str, artifact_key: str):
+    try:
+        path = artifact_file_path(run_id, artifact_key)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return FileResponse(path)
 
 
 @app.get("/health")

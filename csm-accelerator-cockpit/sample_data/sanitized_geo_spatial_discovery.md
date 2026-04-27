@@ -16,6 +16,12 @@ So the business impact is speed, repeatability, and trust in the enrichment outp
 Business Lead 01:31
 Yes. We want a guided app where the user chooses their input file, identifies the relevant address fields, runs a standard enrichment flow, and receives an output file they can use for downstream analysis.
 
+CSM 01:54
+How would you recognise value from the first slice?
+
+Business Lead 02:02
+The value is mainly time saved and repeatability. Our baseline is that analysts spend several hours per file preparing and checking the enrichment output. If the app can reduce that to a guided run with a clear exception report, we can measure the benefit through analyst time saved, fewer rework cycles, and better confidence in the downstream analysis.
+
 Data Analyst 02:15
 Today the process is semi-manual. We take a spreadsheet, check column names, filter obvious bad records, run a geocoder, then join the results back to the original file. If the columns vary, someone has to reconfigure the workflow. That is the part we want to make dynamic.
 
@@ -69,4 +75,3 @@ Let me play that back. The first accelerator slice is a guided geospatial enrich
 
 Business Lead 12:38
 That sounds right. The main open items are the confidence threshold, final exception handling, and who owns the production run if we move beyond proof of concept.
-

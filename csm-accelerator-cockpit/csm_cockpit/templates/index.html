@@ -2,12 +2,12 @@
 {% block content %}
 <header class="hero">
   <div>
-    <p class="eyebrow">Jon Process Aligned · V{{ app_version }}</p>
+    <p class="eyebrow">Jon Process Aligned / V{{ app_version }}</p>
     <h1>CSM Accelerator Cockpit</h1>
     <p class="hero-copy">
-      A compact guided front door for accelerator discovery: capture the conversation,
-      check transcript support, approve the SOP, and hand off only when the Large-only
-      workflow build gate is ready.
+      A guided front door for accelerator discovery: load the transcript first,
+      review the captured sections, approve the SOP, then hand off only when the
+      Large-only workflow build gate is ready.
     </p>
   </div>
   <div class="hero-panel">
@@ -16,7 +16,7 @@
       <span class="score-label">SOP readiness</span>
       <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
     {% else %}
-      <span class="score">V2</span>
+      <span class="score">V3</span>
       <span class="score-label">CSM cockpit</span>
       <span class="gate blocked">no project</span>
     {% endif %}
@@ -27,7 +27,7 @@
   <aside class="rail">
     <section class="card new-project-card">
       <h2>New Accelerator Project</h2>
-      <p class="muted">Create a clean local project folder with Jon's docs, data, status, and workflow structure.</p>
+      <p class="muted">Create the local project folder first, then attach the transcript as step 1.</p>
       <form action="/runs" method="post" class="stack">
         <label>Customer
           <input name="customer_name" value="Demo Customer" placeholder="Customer name">
@@ -59,6 +59,20 @@
       {% endif %}
     </section>
 
+    {% if manifest %}
+      <section class="card process-card">
+        <h2>Project Controls</h2>
+        <p class="muted">Generated projects can be removed if they were test runs.</p>
+        <details class="advanced-action danger-zone">
+          <summary>Delete current project</summary>
+          <form action="/runs/{{ manifest.run_id }}/delete" method="post" class="sync-form">
+            <input name="confirmation" placeholder="Type DELETE">
+            <button type="submit" class="danger">Delete</button>
+          </form>
+        </details>
+      </section>
+    {% endif %}
+
     <section class="card process-card">
       <h2>Jon's Sequence</h2>
       <ol class="stage-list">
@@ -73,18 +87,17 @@
   <section class="workbench">
     {% if not manifest %}
       <section class="empty-state">
-        <h2>Start with the guided call</h2>
+        <h2>Create a project, then attach the transcript</h2>
         <p>
-          This is intentionally human-gated. The CSM records what was answered,
-          the transcript engine checks support, gaps become follow-ups, and only
-          approved SOP content moves toward workflow build.
+          V3 starts from transcript evidence. Once a project exists, step 1 asks the
+          CSM to either upload a transcript or use the bundled sanitized demo transcript.
         </p>
       </section>
     {% else %}
       <section class="card run-header">
         <div>
           <p class="eyebrow">Active Accelerator Project</p>
-          <h2>{{ manifest.customer_name }} · {{ manifest.project_name }}</h2>
+          <h2>{{ manifest.customer_name }} / {{ manifest.project_name }}</h2>
           <p class="muted">Project created {{ manifest.created_at[:10] }}. No customer transcript leaves this machine.</p>
         </div>
         <div class="mini-metrics">
@@ -95,27 +108,59 @@
         </div>
       </section>
 
-      <section class="card">
+      <section class="card split-card" id="transcript-review">
+        <div>
+          <p class="eyebrow">1. Transcript Review</p>
+          <h2>Attach Evidence First</h2>
+          <p class="muted">
+            Choose exactly one source: upload a transcript, or use the bundled sanitized
+            demo transcript. The app stores the original locally and writes Jon's
+            canonical discovery file into the project docs folder.
+          </p>
+          {% if manifest.transcript.analyzed_at %}
+            <p class="success success-line"><span class="done-mark">Done</span> Transcript analyzed: {{ manifest.transcript.characters }} characters captured into the project docs.</p>
+          {% endif %}
+        </div>
+        <form action="/runs/{{ manifest.run_id }}/transcript" method="post" enctype="multipart/form-data" class="stack upload-panel">
+          <div class="choice-grid">
+            <label class="choice-card">
+              <span class="choice-title"><input type="radio" name="transcript_source" value="upload" checked> Upload transcript</span>
+              <span class="muted">DOCX, Markdown, or text.</span>
+              <input type="file" name="transcript_file" accept=".docx,.md,.txt">
+            </label>
+            <label class="choice-card">
+              <span class="choice-title"><input type="radio" name="transcript_source" value="sample"> Use bundled demo transcript</span>
+              <span class="muted">Use the sanitized local sample included in the ZIP.</span>
+              <input type="hidden" name="transcript_path" value="{% if default_transcript_exists %}{{ default_transcript_path }}{% endif %}">
+            </label>
+          </div>
+          <button type="submit">Analyze Transcript</button>
+        </form>
+      </section>
+
+      <section class="card" id="guided-call">
         <div class="section-title">
           <div>
-            <p class="eyebrow">1. Guided Call</p>
+            <p class="eyebrow">2. Guided Call</p>
             <h2>Section-Level Capture</h2>
           </div>
           <span class="pill">CSM owned</span>
         </div>
         <p class="muted compact-copy">
-          The prompts guide the conversation, but the checkbox is at section level.
-          If the customer does not know something, mark it as follow-up rather than forcing certainty.
+          The prompts guide the conversation, but the CSM marks status at section level.
+          Partial, not answered, and needs follow-up stay expanded so the gaps are visible.
         </p>
         <form action="/runs/{{ manifest.run_id }}/capture" method="post">
           <div class="section-table compact">
             {% for section in sections %}
               {% set item = manifest.capture.get(section.id, {}) %}
               {% set analysis = manifest.analysis.get(section.id, {}) %}
-              <details class="section-row" {% if section.required and item.status in ['not_answered', 'needs_follow_up'] %}open{% endif %}>
+              {% set capture_status = item.status or 'not_answered' %}
+              <details class="section-row" {% if section.required and capture_status in ['partial', 'not_answered', 'needs_follow_up'] %}open{% endif %}>
                 <summary>
                   <span>
                     <strong>{{ section.label }}</strong>
+                    <em class="status-chip capture {{ capture_status }}">{{ capture_statuses.get(capture_status, 'Not answered') }}</em>
                     {% if section.required %}
                       <em class="required">SOP gate</em>
                     {% else %}
@@ -138,7 +183,7 @@
                   <div class="section-controls">
                     <select name="status_{{ section.id }}">
                       {% for value, label in capture_statuses.items() %}
-                        <option value="{{ value }}" {% if item.status == value %}selected{% endif %}>{{ label }}</option>
+                        <option value="{{ value }}" {% if capture_status == value %}selected{% endif %}>{{ label }}</option>
                       {% endfor %}
                     </select>
                     <textarea name="notes_{{ section.id }}" placeholder="Facts, assumptions, gaps, or follow-ups">{{ item.notes }}</textarea>
@@ -151,30 +196,7 @@
         </form>
       </section>
 
-      <section class="card split-card">
-        <div>
-          <p class="eyebrow">2. Transcript Review</p>
-          <h2>Attach Evidence</h2>
-          <p class="muted">
-            Upload a DOCX, Markdown, or text transcript. The app keeps the original locally
-            and also writes a clean canonical discovery file for Jon's sequence.
-          </p>
-          {% if manifest.transcript.analyzed_at %}
-            <p class="success">Transcript analyzed: {{ manifest.transcript.characters }} characters captured into the project docs.</p>
-          {% endif %}
-        </div>
-        <form action="/runs/{{ manifest.run_id }}/transcript" method="post" enctype="multipart/form-data" class="stack upload-panel">
-          <label>Upload transcript
-            <input type="file" name="transcript_file" accept=".docx,.md,.txt">
-          </label>
-          <label>Or use local demo transcript
-            <input name="transcript_path" value="{% if default_transcript_exists %}{{ default_transcript_path }}{% endif %}">
-          </label>
-          <button type="submit">Analyze Transcript</button>
-        </form>
-      </section>
-
-      <section class="card">
+      <section class="card" id="human-approval">
         <div class="section-title">
           <div>
             <p class="eyebrow">3. Human Approval</p>
@@ -187,35 +209,41 @@
             {% for section in sections %}
               {% set item = manifest.capture.get(section.id, {}) %}
               {% set analysis = manifest.analysis.get(section.id, {}) %}
-              <article class="approval-card {{ analysis.status or 'not_run' }}">
-                <label class="approve-line">
-                  <input type="checkbox" name="approved_{{ section.id }}" {% if item.approved %}checked{% endif %}>
-                  <span>Approve {{ section.label }}</span>
-                </label>
-                <div class="approval-status-line">
-                  <span class="evidence {{ analysis.status or 'not_run' }}">
-                    {{ evidence_statuses.get(analysis.status or 'not_run', 'Not run') }}
+              {% set evidence_status = analysis.status or 'not_run' %}
+              <details class="approval-card {{ evidence_status }}" {% if section.required and (not item.approved or evidence_status in ['weak_evidence', 'missing', 'conflicting', 'not_run']) %}open{% endif %}>
+                <summary>
+                  <span>
+                    <strong>{{ section.label }}</strong>
+                    <em class="status-chip approval {% if item.approved %}approved{% else %}pending{% endif %}">{% if item.approved %}approved{% else %}pending{% endif %}</em>
                   </span>
-                  {% if not section.required %}<span class="optional">supporting</span>{% endif %}
+                  <span class="evidence {{ evidence_status }}">
+                    {{ evidence_statuses.get(evidence_status, 'Not run') }}
+                  </span>
+                </summary>
+                <div class="approval-body">
+                  <label class="approve-line">
+                    <input type="checkbox" name="approved_{{ section.id }}" {% if item.approved %}checked{% endif %}>
+                    <span>Approve this section for SOP handoff</span>
+                  </label>
+                  <p class="evidence-summary">{{ analysis.summary or "Transcript analysis has not run yet." }}</p>
+                  <p>{{ analysis.recommendation or "Analyze a transcript and save capture before approval." }}</p>
+                  {% if analysis.evidence %}
+                    <details {% if evidence_status in ['weak_evidence', 'missing', 'conflicting'] %}open{% endif %}>
+                      <summary>Review snippets</summary>
+                      {% for evidence in analysis.evidence %}
+                        <blockquote>{{ evidence.snippet }}</blockquote>
+                      {% endfor %}
+                    </details>
+                  {% endif %}
                 </div>
-                <p class="evidence-summary">{{ analysis.summary or "Transcript analysis has not run yet." }}</p>
-                <p>{{ analysis.recommendation or "Save capture and analyze a transcript before approval." }}</p>
-                {% if analysis.evidence %}
-                  <details {% if analysis.status in ['weak_evidence', 'missing', 'conflicting'] %}open{% endif %}>
-                    <summary>Review snippets</summary>
-                    {% for evidence in analysis.evidence %}
-                      <blockquote>{{ evidence.snippet }}</blockquote>
-                    {% endfor %}
-                  </details>
-                {% endif %}
-              </article>
+              </details>
             {% endfor %}
           </div>
           <button type="submit">Save Approvals</button>
         </form>
       </section>
 
-      <section class="card">
+      <section class="card" id="artifact-dashboard">
         <div class="section-title">
           <div>
             <p class="eyebrow">4. Artifact Dashboard</p>
@@ -229,6 +257,9 @@
               <strong>{{ artifact.label }}</strong>
               <span>{{ artifact.status }}</span>
               <small>{{ artifact.relative_path }}</small>
+              {% if artifact.exists %}
+                <a class="artifact-link" href="/runs/{{ manifest.run_id }}/artifacts/{{ artifact.name }}">Open generated file</a>
+              {% endif %}
             </article>
           {% endfor %}
         </div>
@@ -242,14 +273,15 @@
             </ul>
           </div>
         {% else %}
-          <p class="success">SOP gate is ready. The Large-only workflow handoff prompt has been prepared for review.</p>
+          <p class="success">SOP gate is ready. The Large-only workflow handoff prompt is available in the artifact cards above.</p>
         {% endif %}
         <div class="actions">
           <form action="/runs/{{ manifest.run_id }}/generate-docs" method="post">
             <button type="submit">Generate / Refresh Docs</button>
           </form>
           <details class="advanced-action">
-            <summary>Advanced sync into starter docs</summary>
+            <summary>Advanced: copy generated docs into starter_docs</summary>
+            <p class="muted">This is only for maintaining the app's starter document folder. Most CSMs should leave it alone.</p>
             <form action="/runs/{{ manifest.run_id }}/sync-docs" method="post" class="sync-form">
               <input name="confirmation" placeholder="Type SYNC">
               <button type="submit" class="secondary">Sync Docs</button>
@@ -258,7 +290,7 @@
         </div>
       </section>
 
-      <section class="card workflow-card">
+      <section class="card workflow-card" id="workflow-handoff">
         <p class="eyebrow">5. Workflow Handoff</p>
         <h2>Large Prompt Gate</h2>
         <p>

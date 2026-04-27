@@ -54,6 +54,10 @@ button.secondary {
   border: 1px solid var(--line);
 }
 
+button.danger {
+  background: linear-gradient(135deg, var(--red), #7c2525);
+}
+
 input,
 select,
 textarea {
@@ -188,6 +192,27 @@ code {
   font-weight: 800;
 }
 
+.success-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.done-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  border-radius: 999px;
+  padding: 0.22rem 0.52rem;
+  color: #fff;
+  background: var(--green);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .compact-copy {
   max-width: 840px;
 }
@@ -257,7 +282,8 @@ code {
 .gate,
 .required,
 .optional,
-.evidence {
+.evidence,
+.status-chip {
   display: inline-flex;
   align-items: center;
   width: fit-content;
@@ -307,6 +333,60 @@ code {
   color: var(--teal);
   background: #dff1ed;
   font-style: normal;
+}
+
+.status-chip {
+  font-style: normal;
+  color: var(--navy);
+  background: #e8edf2;
+}
+
+.status-chip.answered,
+.status-chip.approved {
+  color: #fff;
+  background: var(--green);
+}
+
+.status-chip.partial {
+  color: #4c3200;
+  background: #f6d790;
+}
+
+.status-chip.not_answered,
+.status-chip.pending {
+  color: #5c6570;
+  background: #e5e7eb;
+}
+
+.status-chip.needs_follow_up {
+  color: #fff;
+  background: var(--red);
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.choice-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.70);
+}
+
+.choice-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 900;
+}
+
+.choice-title input {
+  width: auto;
 }
 
 .section-table {
@@ -408,6 +488,37 @@ code {
   gap: 10px;
 }
 
+.approval-card summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.approval-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.approval-card summary span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.approval-card[open] summary {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.approval-body {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+}
+
 .approval-card.supported {
   background: #edf7ef;
 }
@@ -447,6 +558,13 @@ details {
   padding-top: 8px;
 }
 
+.section-row,
+.approval-card,
+.advanced-action {
+  border-top: 1px solid var(--line);
+  padding-top: 0;
+}
+
 details summary {
   cursor: pointer;
   font-weight: 800;
@@ -475,6 +593,17 @@ blockquote {
   overflow-wrap: anywhere;
 }
 
+.artifact-link {
+  width: fit-content;
+  color: var(--teal);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.artifact-link:hover {
+  text-decoration: underline;
+}
+
 .blockers {
   margin: 16px 0;
   padding: 14px 18px;
@@ -497,6 +626,11 @@ blockquote {
   background: rgba(255, 255, 255, 0.46);
 }
 
+.danger-zone {
+  border-color: rgba(164, 61, 61, 0.36);
+  background: rgba(255, 243, 239, 0.72);
+}
+
 .workflow-card {
   background: linear-gradient(135deg, rgba(234, 241, 247, 0.92), rgba(229, 243, 239, 0.88));
 }
@@ -504,6 +638,7 @@ blockquote {
 @media (max-width: 1060px) {
   .grid,
   .section-body,
+  .choice-grid,
   .approval-grid,
   .artifact-grid {
     grid-template-columns: 1fr;

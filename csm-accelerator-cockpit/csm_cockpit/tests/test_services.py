@@ -12,9 +12,12 @@ class CockpitServicesTest(unittest.TestCase):
         sections = services.load_question_bank()
         labels = {section.label for section in sections}
         self.assertIn("Business Problem", labels)
+        self.assertIn("Value Realization", labels)
         self.assertIn("Source Systems", labels)
         self.assertIn("Validation / Trust", labels)
-        self.assertGreaterEqual(len(sections), 12)
+        self.assertNotIn("Known Unknowns", labels)
+        self.assertNotIn("Close / Playback", labels)
+        self.assertGreaterEqual(len(sections), 11)
 
     def test_transcript_analysis_marks_supported_and_missing_sections(self) -> None:
         sections = services.JON_SECTIONS

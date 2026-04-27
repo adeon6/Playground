@@ -7,22 +7,23 @@ GitHub Pages hosts the landing page and downloadable ZIP. The real app runs loca
 ## Quick Start
 
 1. Download or clone this folder.
-2. Extract the ZIP into a fresh folder. The current ZIP opens as `csm-accelerator-cockpit-v2`.
+2. Extract the ZIP into a fresh folder. The current ZIP opens as `csm-accelerator-cockpit-v3`.
 3. Double-click `Start CSM Cockpit.bat`.
 4. Wait for the browser to open.
-5. Create a new accelerator project, save guided capture, attach a transcript, approve sections, and generate docs.
+5. Create a new accelerator project, attach a transcript, save guided capture, approve sections, and generate docs.
 6. Double-click `Stop CSM Cockpit.bat` when finished.
 
 The launcher creates a private `.venv`, installs dependencies from `requirements.txt`, starts the local FastAPI app, and opens `http://127.0.0.1:8765`.
 
 ## What Is The Brain?
 
-V2 uses an explainable local rules engine, not a hidden hosted AI model.
+V3 uses an explainable local rules engine, not a hidden hosted AI model.
 
 - It accepts `.docx`, `.md`, and `.txt` transcripts.
 - It maps transcript evidence to Jon's section-level discovery model.
+- It starts with transcript review before section-level capture.
 - It summarizes why a section appears supported, weak, missing, or conflicting.
-- It treats "customer does not know yet" as a valid discovery outcome that goes to the gap log.
+- It includes Value Realization and removes ambiguous Known Unknowns / Close Playback sections from the CSM workflow.
 - It requires human approval before the SOP is treated as workflow-build ready.
 
 Optional OpenAI-assisted evidence extraction can be added later, but it is deliberately not required for this shareable prototype.
