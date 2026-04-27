@@ -7,7 +7,7 @@ GitHub Pages hosts the landing page and downloadable ZIP. The real app runs loca
 ## Quick Start
 
 1. Download or clone this folder.
-2. Extract the ZIP into a fresh folder. The current ZIP opens as `csm-accelerator-cockpit-v4`.
+2. Extract the ZIP into a fresh folder. The current ZIP opens as `csm-accelerator-cockpit-v4.1`.
 3. Double-click `Start CSM Cockpit.bat`.
 4. Wait for the browser to open.
 5. Create a new accelerator project, attach a transcript, save guided capture, approve sections, and generate docs.
@@ -17,7 +17,7 @@ The launcher creates a private `.venv`, installs dependencies from `requirements
 
 ## What Is The Brain?
 
-V4 uses an explainable local rules engine for transcript coverage, not a hidden hosted AI model.
+V4.1 uses an explainable local rules engine for transcript coverage, not a hidden hosted AI model.
 
 - It accepts `.docx`, `.md`, and `.txt` transcripts.
 - It maps transcript evidence to Jon's section-level discovery model.
