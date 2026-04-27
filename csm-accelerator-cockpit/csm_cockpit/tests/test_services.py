@@ -34,6 +34,22 @@ class CockpitServicesTest(unittest.TestCase):
         self.assertEqual(analysis["business_rules"]["status"], "missing")
         self.assertIn("summary", analysis["current_process"])
 
+    def test_value_realization_detects_short_heading_style_transcript(self) -> None:
+        sections = services.JON_SECTIONS
+        text = """
+        Customer:
+        "Yes. If we can get that far quickly, that proves the approach."
+        10. Value Realization
+        Consultant:
+        "How would you quantify success?"
+        Customer:
+        "It should halve the time taken to create the prioritised lists"
+        """
+        capture = {section.id: {"status": "answered"} for section in sections}
+        analysis = services.analyze_transcript_text(text, sections, capture)
+        self.assertEqual(analysis["value_realization"]["status"], "supported")
+        self.assertGreaterEqual(analysis["value_realization"]["score"], 6)
+
     def test_markdown_transcript_is_canonicalized_into_project_docs(self) -> None:
         sections = services.JON_SECTIONS
         with tempfile.TemporaryDirectory() as tmp:

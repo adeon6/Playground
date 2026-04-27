@@ -11,7 +11,7 @@ from typing import Any
 from docx import Document
 
 
-APP_VERSION = "0.4.0"
+APP_VERSION = "0.4.1"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 COCKPIT_ROOT = Path(__file__).resolve().parent
@@ -127,7 +127,29 @@ JON_SECTIONS = [
         "Value Realization",
         "Capture how the customer will recognise value, measure improvement, and justify the accelerator.",
         ["Value driver", "Baseline", "Target benefit", "Measurement method", "Stakeholder value story"],
-        ["value", "benefit", "roi", "saving", "baseline", "measure", "metric", "improvement", "time saved", "efficiency"],
+        [
+            "value",
+            "value realization",
+            "value realisation",
+            "benefit",
+            "roi",
+            "saving",
+            "baseline",
+            "measure",
+            "metric",
+            "improvement",
+            "quantify",
+            "quantify success",
+            "success",
+            "time saved",
+            "time taken",
+            "halve",
+            "reduce",
+            "reduction",
+            "faster",
+            "quickly",
+            "efficiency",
+        ],
     ),
     Section(
         "current_process",
@@ -275,7 +297,25 @@ def split_evidence_units(text: str) -> list[str]:
         cleaned = re.sub(r"\s+", " ", unit).strip()
         if len(cleaned) >= 35:
             units.append(cleaned)
-    return units
+
+    # Discovery transcripts often use short section-heading blocks:
+    # "10. Value Realization" / "How would you quantify success?" / answer.
+    # Those lines are individually too short for rough sentence scoring, so add
+    # small rolling line windows to preserve the heading + Q/A context.
+    lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines() if line.strip()]
+    for start in range(len(lines)):
+        window = " ".join(lines[start : start + 5]).strip()
+        if len(window) >= 35:
+            units.append(window)
+
+    seen: set[str] = set()
+    unique_units: list[str] = []
+    for unit in units:
+        key = unit.lower()
+        if key not in seen:
+            seen.add(key)
+            unique_units.append(unit)
+    return unique_units
 
 
 def _keyword_hits(text: str, keywords: list[str]) -> tuple[int, list[str]]:
