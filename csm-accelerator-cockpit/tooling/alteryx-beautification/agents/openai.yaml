@@ -1,0 +1,4 @@
+interface:
+  display_name: "Alteryx Beautification"
+  short_description: "Beautify and de-spiderweb Alteryx workflows"
+  default_prompt: "Use $alteryx-beautification to clean this Alteryx workflow layout without changing its logic."

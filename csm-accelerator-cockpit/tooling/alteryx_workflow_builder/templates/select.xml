@@ -1,0 +1,14 @@
+<Node ToolID="{{TOOL_ID}}">
+  <GuiSettings Plugin="AlteryxBasePluginsGui.Select.Select" Position="{{X}},{{Y}}" />
+  <Properties>
+    <Configuration>
+      <Fields>
+        {{FIELDS}}
+      </Fields>
+      {{CONFIG_XML}}
+    </Configuration>
+    <Annotation DisplayMode="0">
+      <Name>{{LABEL}}</Name>
+    </Annotation>
+  </Properties>
+</Node>

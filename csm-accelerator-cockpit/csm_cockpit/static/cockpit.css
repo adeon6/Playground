@@ -58,6 +58,27 @@ button.danger {
   background: linear-gradient(135deg, var(--red), #7c2525);
 }
 
+a.link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 999px;
+  padding: 0.68rem 1rem;
+  color: #fff;
+  background: linear-gradient(135deg, var(--teal), #0b5f64);
+  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.18);
+  text-decoration: none;
+  font-weight: 800;
+}
+
+a.secondary-link {
+  color: var(--navy);
+  background: #f2eadc;
+  box-shadow: none;
+  border: 1px solid var(--line);
+}
+
 input,
 select,
 textarea {
@@ -635,12 +656,89 @@ blockquote {
   background: linear-gradient(135deg, rgba(234, 241, 247, 0.92), rgba(229, 243, 239, 0.88));
 }
 
+.preflight-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.preflight-tile {
+  display: grid;
+  gap: 4px;
+  min-height: 86px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.preflight-tile strong {
+  font-size: 0.9rem;
+}
+
+.preflight-tile span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.preflight-tile.ready {
+  border-color: rgba(47, 123, 71, 0.42);
+  background: #edf7ef;
+}
+
+.preflight-tile.warning {
+  border-color: rgba(184, 111, 18, 0.30);
+  background: #fff7e7;
+}
+
+.preflight-tile.blocked {
+  border-color: rgba(164, 61, 61, 0.22);
+  background: #fff3ef;
+}
+
+.preflight-tile.neutral {
+  background: #f3efe6;
+}
+
+.workflow-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.workflow-actions form {
+  margin: 0;
+}
+
+.launch-form {
+  margin: 12px 0 0;
+}
+
+.detected-artifacts {
+  margin-top: 14px;
+  border: 1px dashed var(--line);
+  border-radius: 18px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.detected-artifacts ul {
+  margin-bottom: 0;
+}
+
 @media (max-width: 1060px) {
   .grid,
   .section-body,
   .choice-grid,
   .approval-grid,
-  .artifact-grid {
+  .artifact-grid,
+  .preflight-grid {
     grid-template-columns: 1fr;
   }
 

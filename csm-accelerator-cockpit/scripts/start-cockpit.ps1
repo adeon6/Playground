@@ -16,7 +16,11 @@ $RequiredPaths = @(
     "sample_data\sanitized_geo_spatial_discovery.md",
     "process_pack\README.md",
     "process_pack\sequencer\sequence_config.json",
-    "process_pack\03_workflow_build\sop_to_alteryx_super_prompt_pack.md"
+    "process_pack\03_workflow_build\sop_to_alteryx_super_prompt_pack.md",
+    "tooling\alteryx_workflow_builder\verify_workflows.py",
+    "tooling\alteryx_workflow_builder\WORKFLOW_RULES.md",
+    "tooling\alteryx-beautification\SKILL.md",
+    "tooling\alteryx-beautification\references\spiderweb-reduction.md"
 )
 
 function Assert-CompleteExtraction {

@@ -89,9 +89,44 @@ class CockpitServicesTest(unittest.TestCase):
                     path = Path(manifest["artifacts"][artifact]["path"])
                     self.assertTrue(path.exists(), artifact)
                     self.assertTrue(str(path).startswith(tmp))
+                prompt_path = Path(tmp) / manifest["run_id"] / "status" / "codex_workflow_build_prompt.md"
+                helper_path = Path(tmp) / manifest["run_id"] / "status" / "START_CODEX_WORKFLOW_BUILD.ps1"
+                build_manifest_path = Path(tmp) / manifest["run_id"] / "status" / "workflow_build_manifest.json"
+                self.assertTrue(prompt_path.exists())
+                self.assertTrue(helper_path.exists())
+                self.assertTrue(build_manifest_path.exists())
                 self.assertTrue((Path(tmp) / manifest["run_id"] / "status" / "next_stage_prompt.md").exists())
                 readiness = services.calculate_readiness(manifest, sections)
                 self.assertEqual(readiness["workflow_gate"], "ready")
+            finally:
+                services.RUNS_DIR = original_runs_dir
+
+    def test_workflow_handoff_prompt_is_hydrated_and_beautification_aware(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp)
+            try:
+                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+                for section in sections:
+                    manifest["capture"][section.id]["status"] = "answered"
+                    manifest["capture"][section.id]["notes"] = f"{section.label} notes"
+                    manifest["capture"][section.id]["approved"] = True
+                manifest["analysis"] = {
+                    section.id: {"status": "supported", "score": 9, "evidence": [], "recommendation": "Evidence is strong enough for CSM review."}
+                    for section in sections
+                }
+                manifest = services.generate_docs(manifest, sections)
+                prompt_path = Path(manifest["artifacts"][services.WORKFLOW_PROMPT_ARTIFACT]["path"])
+                prompt_text = prompt_path.read_text(encoding="utf-8")
+                self.assertNotIn("[INSERT PATH]", prompt_text)
+                self.assertNotIn("[INSERT SOURCE STYLE]", prompt_text)
+                self.assertIn("docs/03_accelerator_sop.md", prompt_text)
+                self.assertIn("Alteryx workflow-builder toolkit", prompt_text)
+                self.assertIn("Beautification rules", prompt_text)
+                self.assertIn("spiderweb reduction", prompt_text.lower())
+                self.assertIn("workflows", prompt_text)
+                self.assertEqual(manifest["workflow_build"]["status"], "prompt_ready")
             finally:
                 services.RUNS_DIR = original_runs_dir
 

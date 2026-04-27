@@ -1,0 +1,20 @@
+<Node ToolID="{{TOOL_ID}}">
+  <GuiSettings Plugin="AlteryxBasePluginsGui.ToolContainer.ToolContainer">
+    <Position x="{{X}}" y="{{Y}}" />
+  </GuiSettings>
+  <Properties>
+    <Configuration>
+      <Operation>{{OP_NAME}}</Operation>
+      <Args>
+        {{ARGS_XML}}
+      </Args>
+      {{CONFIG_XML}}
+    </Configuration>
+    <Annotation DisplayMode="0">
+      <Name />
+      <AnnotationText>{{LABEL}}</AnnotationText>
+      <DefaultAnnotationText>{{LABEL}}</DefaultAnnotationText>
+      <Left value="False" />
+    </Annotation>
+  </Properties>
+</Node>

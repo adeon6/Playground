@@ -6,8 +6,8 @@
     <h1>CSM Accelerator Cockpit</h1>
     <p class="hero-copy">
       A guided front door for accelerator discovery: load the transcript first,
-      review the captured sections, approve the SOP, then hand off only when the
-      Large-only workflow build gate is ready.
+      review the captured sections, approve the SOP, then generate a hydrated
+      Codex workflow-build handoff when the Large-only gate is ready.
     </p>
   </div>
   <div class="hero-panel">
@@ -16,7 +16,7 @@
       <span class="score-label">SOP readiness</span>
       <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
     {% else %}
-      <span class="score">V3</span>
+      <span class="score">V4</span>
       <span class="score-label">CSM cockpit</span>
       <span class="gate blocked">no project</span>
     {% endif %}
@@ -89,7 +89,7 @@
       <section class="empty-state">
         <h2>Create a project, then attach the transcript</h2>
         <p>
-          V3 starts from transcript evidence. Once a project exists, step 1 asks the
+          V4 starts from transcript evidence. Once a project exists, step 1 asks the
           CSM to either upload a transcript or use the bundled sanitized demo transcript.
         </p>
       </section>
@@ -273,7 +273,7 @@
             </ul>
           </div>
         {% else %}
-          <p class="success">SOP gate is ready. The Large-only workflow handoff prompt is available in the artifact cards above.</p>
+          <p class="success">SOP gate is ready. Generate or refresh the workflow-build handoff below to prepare the Codex prompt.</p>
         {% endif %}
         <div class="actions">
           <form action="/runs/{{ manifest.run_id }}/generate-docs" method="post">
@@ -291,19 +291,114 @@
       </section>
 
       <section class="card workflow-card" id="workflow-handoff">
+        {% set workflow = manifest.workflow_build or {} %}
+        {% set prompt_key = workflow.prompt_artifact or 'status/codex_workflow_build_prompt.md' %}
+        {% set helper_key = workflow.helper_artifact or 'status/START_CODEX_WORKFLOW_BUILD.ps1' %}
+        {% set manifest_key = workflow.manifest_artifact or 'status/workflow_build_manifest.json' %}
+        {% set prompt_artifact = manifest.artifacts.get(prompt_key, {}) %}
+        {% set helper_artifact = manifest.artifacts.get(helper_key, {}) %}
+        {% set build_manifest_artifact = manifest.artifacts.get(manifest_key, {}) %}
         <p class="eyebrow">5. Workflow Handoff</p>
-        <h2>Large Prompt Gate</h2>
-        <p>
-          The cockpit prepares Jon's Large-only handoff prompt in the project status folder.
-          It does not auto-run Codex or Alteryx yet; that remains a deliberate downstream step.
-        </p>
-        {% if readiness.workflow_gate == "ready" %}
-          <p class="success">Ready for controlled workflow build handoff.</p>
+        <div class="section-title">
+          <div>
+            <h2>Gated Codex Build Package</h2>
+            <p class="muted compact-copy">
+              The cockpit does not contain Codex. It prepares the project library,
+              resolves Jon's Large prompt with the right files, and can optionally
+              open local Codex when this machine has it installed.
+            </p>
+          </div>
+          <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
+        </div>
+
+        <div class="preflight-grid">
+          <article class="preflight-tile {% if prompt_artifact.exists %}ready{% else %}blocked{% endif %}">
+            <strong>Prompt ready</strong>
+            <span>{% if prompt_artifact.exists %}generated{% else %}not generated{% endif %}</span>
+          </article>
+          <article class="preflight-tile {% if workflow.codex_detected %}ready{% else %}blocked{% endif %}">
+            <strong>Codex detected</strong>
+            <span>{% if workflow.codex_detected %}yes{% else %}not found{% endif %}</span>
+          </article>
+          <article class="preflight-tile {% if workflow.designer_detected %}ready{% else %}warning{% endif %}">
+            <strong>Designer / Engine</strong>
+            <span>{% if workflow.designer_detected %}detected{% else %}not detected{% endif %}</span>
+          </article>
+          <article class="preflight-tile {% if workflow.builder_toolkit_ready and workflow.beautification_ready %}ready{% else %}blocked{% endif %}">
+            <strong>Builder + beauty</strong>
+            <span>{% if workflow.builder_toolkit_ready and workflow.beautification_ready %}bundled{% else %}missing{% endif %}</span>
+          </article>
+          <article class="preflight-tile {% if workflow.detected_artifacts %}ready{% else %}neutral{% endif %}">
+            <strong>Workflow outputs</strong>
+            <span>{{ workflow.detected_artifacts|length if workflow.detected_artifacts else 0 }} found</span>
+          </article>
+        </div>
+
+        <div class="workflow-actions">
+          <form action="/runs/{{ manifest.run_id }}/workflow-build" method="post">
+            <button type="submit">Generate / Refresh Workflow Handoff</button>
+          </form>
+          {% if prompt_artifact.exists %}
+            <a class="link-button" href="/runs/{{ manifest.run_id }}/artifacts/{{ prompt_key }}">Open Prompt</a>
+            <a class="link-button secondary-link" href="/runs/{{ manifest.run_id }}/artifacts/{{ prompt_key }}" download>Download Prompt</a>
+            <button type="button" class="secondary copy-prompt" data-copy-url="/runs/{{ manifest.run_id }}/artifacts/{{ prompt_key }}">Copy Prompt</button>
+          {% endif %}
+          {% if helper_artifact.exists %}
+            <a class="link-button secondary-link" href="/runs/{{ manifest.run_id }}/artifacts/{{ helper_key }}" download>Download Helper</a>
+          {% endif %}
+          {% if build_manifest_artifact.exists %}
+            <a class="link-button secondary-link" href="/runs/{{ manifest.run_id }}/artifacts/{{ manifest_key }}">Open Manifest</a>
+          {% endif %}
+          <form action="/runs/{{ manifest.run_id }}/open-folder" method="post">
+            <input type="hidden" name="target" value="workflows">
+            <button type="submit" class="secondary">Open Workflow Folder</button>
+          </form>
+        </div>
+        <p class="copy-status muted" aria-live="polite"></p>
+
+        {% if readiness.workflow_gate == "ready" and prompt_artifact.exists %}
+          <p class="success">Ready for controlled workflow build handoff. The prompt is project-specific and copy/paste-ready.</p>
+          {% if workflow.codex_detected %}
+            <form action="/runs/{{ manifest.run_id }}/launch-codex" method="post" class="launch-form">
+              <button type="submit">Experimental: Copy Prompt And Launch Codex</button>
+            </form>
+            {% if workflow.last_launch_at %}
+              <p class="muted">Last launch: {{ workflow.last_launch_at }} / {{ workflow.last_launch_status }}</p>
+            {% endif %}
+          {% else %}
+            <p class="muted">Codex is not detected on this machine. Open the prompt and paste it into local Codex manually.</p>
+          {% endif %}
         {% else %}
-          <p class="muted">Resolve blockers above, then regenerate docs to refresh the next-stage prompt.</p>
+          <p class="muted">Resolve blockers above, generate the docs, then refresh this handoff before asking Codex to build the workflow.</p>
+        {% endif %}
+
+        {% if workflow.detected_artifacts %}
+          <details class="detected-artifacts">
+            <summary>Detected workflow build outputs</summary>
+            <ul>
+              {% for output in workflow.detected_artifacts %}
+                <li><code>{{ output.relative_path }}</code></li>
+              {% endfor %}
+            </ul>
+          </details>
         {% endif %}
       </section>
     {% endif %}
   </section>
 </main>
+<script>
+  document.addEventListener("click", async (event) => {
+    const button = event.target.closest(".copy-prompt");
+    if (!button) return;
+    const status = document.querySelector(".copy-status");
+    try {
+      const response = await fetch(button.dataset.copyUrl);
+      const text = await response.text();
+      await navigator.clipboard.writeText(text);
+      if (status) status.textContent = "Prompt copied to clipboard.";
+    } catch (error) {
+      if (status) status.textContent = "Could not copy automatically. Open the prompt and copy it manually.";
+    }
+  });
+</script>
 {% endblock %}

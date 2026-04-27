@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
+import subprocess
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,17 +13,24 @@ from typing import Any
 from docx import Document
 
 
-APP_VERSION = "0.4.1"
+APP_VERSION = "0.5.0"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 COCKPIT_ROOT = Path(__file__).resolve().parent
 RUNS_DIR = COCKPIT_ROOT / "runs"
 STARTER_DOCS_DIR = PROJECT_ROOT / "starter_docs"
 PROCESS_PACK_DIR = PROJECT_ROOT / "process_pack"
+TOOLING_DIR = PROJECT_ROOT / "tooling"
 SEQUENCE_CONFIG_PATH = PROCESS_PACK_DIR / "sequencer" / "sequence_config.json"
 LARGE_PROMPT_PATH = PROCESS_PACK_DIR / "03_workflow_build" / "sop_to_alteryx_super_prompt_pack.md"
 QUESTION_TEMPLATE_DOCX = PROCESS_PACK_DIR / "01_discovery" / "guided_discovery_conversation_template.docx"
 DEFAULT_TRANSCRIPT_PATH = PROJECT_ROOT / "sample_data" / "sanitized_geo_spatial_discovery.md"
+WORKFLOW_PROMPT_ARTIFACT = "status/codex_workflow_build_prompt.md"
+WORKFLOW_HELPER_ARTIFACT = "status/START_CODEX_WORKFLOW_BUILD.ps1"
+WORKFLOW_MANIFEST_ARTIFACT = "status/workflow_build_manifest.json"
+LEGACY_PROMPT_ARTIFACT = "status/next_stage_prompt.md"
+PIPELINE_STATUS_ARTIFACT = "status/pipeline_status.json"
+PIPELINE_LOG_ARTIFACT = "status/pipeline_log.md"
 
 CAPTURE_STATUSES = {
     "answered": "Answered",
@@ -52,7 +61,10 @@ ARTIFACT_LABELS = {
     "03_accelerator_sop.md": "Accelerator SOP",
     "sop_gap_log.md": "Gap log",
     "sop_architecture_assessment.md": "Architecture assessment",
-    "status/next_stage_prompt.md": "Workflow handoff prompt",
+    WORKFLOW_PROMPT_ARTIFACT: "Codex workflow build prompt",
+    WORKFLOW_HELPER_ARTIFACT: "Codex launch helper",
+    WORKFLOW_MANIFEST_ARTIFACT: "Workflow build manifest",
+    LEGACY_PROMPT_ARTIFACT: "Workflow handoff prompt",
     "status/pipeline_status.json": "Pipeline status",
     "status/pipeline_log.md": "Pipeline log",
 }
@@ -63,6 +75,21 @@ PROJECT_FOLDERS = [
     "data/generated",
     "status",
     "workflows",
+    "validation",
+]
+
+VISIBLE_ARTIFACTS = [
+    *DOC_ARTIFACTS,
+    WORKFLOW_PROMPT_ARTIFACT,
+    WORKFLOW_HELPER_ARTIFACT,
+    WORKFLOW_MANIFEST_ARTIFACT,
+]
+
+ALL_ARTIFACTS = [
+    *VISIBLE_ARTIFACTS,
+    LEGACY_PROMPT_ARTIFACT,
+    PIPELINE_STATUS_ARTIFACT,
+    PIPELINE_LOG_ARTIFACT,
 ]
 
 REQUIRED_FOR_SOP_GATE = {
@@ -445,7 +472,7 @@ def new_manifest(customer_name: str, project_name: str, csm_name: str, sections:
     run_id = f"{timestamp}-{base}"
     project_dir = run_dir(run_id)
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "run_id": run_id,
         "customer_name": customer_name.strip() or "Unnamed customer",
         "project_name": project_name.strip() or "Accelerator discovery",
@@ -476,7 +503,28 @@ def new_manifest(customer_name: str, project_name: str, csm_name: str, sections:
         "analysis": {},
         "artifacts": {
             artifact: _artifact_record(project_dir, artifact)
-            for artifact in [*DOC_ARTIFACTS, "status/next_stage_prompt.md", "status/pipeline_status.json", "status/pipeline_log.md"]
+            for artifact in ALL_ARTIFACTS
+        },
+        "workflow_build": {
+            "status": "not_generated",
+            "prompt_path": "",
+            "helper_script_path": "",
+            "manifest_path": "",
+            "prompt_artifact": WORKFLOW_PROMPT_ARTIFACT,
+            "helper_artifact": WORKFLOW_HELPER_ARTIFACT,
+            "manifest_artifact": WORKFLOW_MANIFEST_ARTIFACT,
+            "codex_detected": False,
+            "codex_path": "",
+            "designer_detected": False,
+            "engine_path": "",
+            "designer_path": "",
+            "tooling_bundle_version": "",
+            "builder_toolkit_ready": False,
+            "beautification_ready": False,
+            "detected_artifacts": [],
+            "generated_at": "",
+            "last_launch_at": "",
+            "last_launch_status": "",
         },
         "sync": {
             "synced_at": "",
@@ -489,12 +537,13 @@ def new_manifest(customer_name: str, project_name: str, csm_name: str, sections:
 def _refresh_artifact_records(manifest: dict[str, Any]) -> dict[str, Any]:
     project_dir = run_dir(manifest["run_id"])
     records = manifest.setdefault("artifacts", {})
-    for artifact in [*DOC_ARTIFACTS, "status/next_stage_prompt.md", "status/pipeline_status.json", "status/pipeline_log.md"]:
+    for artifact in ALL_ARTIFACTS:
         existing = records.get(artifact, {})
         generated_at = existing.get("generated_at", "")
         records[artifact] = _artifact_record(project_dir, artifact)
         if generated_at and records[artifact]["exists"]:
             records[artifact]["generated_at"] = generated_at
+    refresh_workflow_build_state(manifest)
     return manifest
 
 
@@ -714,8 +763,143 @@ def _gap_rows(manifest: dict[str, Any], sections: list[Section]) -> list[dict[st
     return rows
 
 
+def _relative_to_project(project_dir: Path, path: Path) -> str:
+    try:
+        return path.relative_to(project_dir).as_posix()
+    except ValueError:
+        return os.path.relpath(path, project_dir).replace("\\", "/")
+
+
+def _first_existing(paths: list[Path]) -> Path | None:
+    for path in paths:
+        if path.exists():
+            return path
+    return None
+
+
+def detect_workflow_environment() -> dict[str, Any]:
+    program_files = Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
+    program_files_x86 = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
+    codex_path = shutil.which("codex") or ""
+    engine = _first_existing(
+        [
+            program_files / "Alteryx" / "bin" / "AlteryxEngineCmd.exe",
+            program_files_x86 / "Alteryx" / "bin" / "AlteryxEngineCmd.exe",
+        ]
+    )
+    designer = _first_existing(
+        [
+            program_files / "Alteryx" / "bin" / "AlteryxGui.exe",
+            program_files / "Alteryx" / "bin" / "AlteryxDesigner.exe",
+            program_files / "Alteryx" / "bin" / "AlteryxDesigner_x64.exe",
+            program_files_x86 / "Alteryx" / "bin" / "AlteryxGui.exe",
+            program_files_x86 / "Alteryx" / "bin" / "AlteryxDesigner.exe",
+        ]
+    )
+    builder_root = TOOLING_DIR / "alteryx_workflow_builder"
+    beautification_root = TOOLING_DIR / "alteryx-beautification"
+    builder_ready = (builder_root / "verify_workflows.py").exists() and (builder_root / "WORKFLOW_RULES.md").exists()
+    beautification_ready = (beautification_root / "SKILL.md").exists() and (beautification_root / "references" / "spiderweb-reduction.md").exists()
+    return {
+        "codex_detected": bool(codex_path),
+        "codex_path": codex_path,
+        "designer_detected": bool(engine or designer),
+        "engine_path": str(engine) if engine else "",
+        "designer_path": str(designer) if designer else "",
+        "builder_toolkit_ready": builder_ready,
+        "beautification_ready": beautification_ready,
+        "tooling_bundle_version": f"cockpit-v{APP_VERSION}",
+        "builder_toolkit_path": str(builder_root),
+        "beautification_path": str(beautification_root),
+    }
+
+
+def detect_workflow_artifacts(manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    project_dir = run_dir(manifest["run_id"])
+    candidates: list[Path] = []
+    workflow_dir = project_dir / "workflows"
+    validation_dir = project_dir / "validation"
+    status_dir = project_dir / "status"
+    if workflow_dir.exists():
+        for pattern in ["*.yxmd", "*.yxmc", "*.yxwz", "*.yxzp", "*.png", "*.json", "*.md", "*.csv", "*.xlsx"]:
+            candidates.extend(workflow_dir.rglob(pattern))
+    if validation_dir.exists():
+        for pattern in ["*.png", "*.json", "*.md", "*.csv", "*.xlsx", "*.txt"]:
+            candidates.extend(validation_dir.rglob(pattern))
+    for status_name in ["workflow_spec.json", "validation_report.json", "lint_report.json", "runtime_smoke_results.json"]:
+        status_path = status_dir / status_name
+        if status_path.exists():
+            candidates.append(status_path)
+
+    seen: set[Path] = set()
+    artifacts: list[dict[str, Any]] = []
+    for path in sorted(candidates):
+        if path in seen or not path.is_file():
+            continue
+        seen.add(path)
+        artifacts.append(
+            {
+                "name": path.name,
+                "relative_path": _relative_to_project(project_dir, path),
+                "kind": path.suffix.lower().lstrip(".") or "file",
+                "size": path.stat().st_size,
+                "updated_at": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).replace(microsecond=0).isoformat(),
+            }
+        )
+    return artifacts
+
+
+def refresh_workflow_build_state(manifest: dict[str, Any]) -> dict[str, Any]:
+    project_dir = run_dir(manifest["run_id"])
+    preflight = detect_workflow_environment()
+    prompt_path = project_dir / WORKFLOW_PROMPT_ARTIFACT
+    helper_path = project_dir / WORKFLOW_HELPER_ARTIFACT
+    workflow_manifest_path = project_dir / WORKFLOW_MANIFEST_ARTIFACT
+    detected_artifacts = detect_workflow_artifacts(manifest)
+    workflow_files = [
+        item
+        for item in detected_artifacts
+        if item["relative_path"].startswith("workflows/") and item["kind"] in {"yxmd", "yxmc", "yxwz", "yxzp"}
+    ]
+    existing = manifest.setdefault("workflow_build", {})
+    generated_at = existing.get("generated_at", "")
+    if workflow_files:
+        status = "workflow_outputs_detected"
+    elif prompt_path.exists():
+        status = "prompt_ready"
+    else:
+        status = existing.get("status", "not_generated")
+        if status == "blocked":
+            status = "not_generated"
+
+    existing.update(
+        {
+            "status": status,
+            "prompt_path": str(prompt_path) if prompt_path.exists() else "",
+            "helper_script_path": str(helper_path) if helper_path.exists() else "",
+            "manifest_path": str(workflow_manifest_path) if workflow_manifest_path.exists() else "",
+            "prompt_artifact": WORKFLOW_PROMPT_ARTIFACT,
+            "helper_artifact": WORKFLOW_HELPER_ARTIFACT,
+            "manifest_artifact": WORKFLOW_MANIFEST_ARTIFACT,
+            "codex_detected": preflight["codex_detected"],
+            "codex_path": preflight["codex_path"],
+            "designer_detected": preflight["designer_detected"],
+            "engine_path": preflight["engine_path"],
+            "designer_path": preflight["designer_path"],
+            "tooling_bundle_version": preflight["tooling_bundle_version"],
+            "builder_toolkit_ready": preflight["builder_toolkit_ready"],
+            "beautification_ready": preflight["beautification_ready"],
+            "detected_artifacts": detected_artifacts[:40],
+        }
+    )
+    if generated_at:
+        existing["generated_at"] = generated_at
+    return manifest
+
+
 def _pipeline_status(manifest: dict[str, Any], readiness: dict[str, Any]) -> dict[str, Any]:
     sequence = load_sequence_config()
+    workflow_build = manifest.get("workflow_build", {})
     return {
         "run_id": manifest["run_id"],
         "customer_name": manifest["customer_name"],
@@ -726,40 +910,235 @@ def _pipeline_status(manifest: dict[str, Any], readiness: dict[str, Any]) -> dic
             "state": readiness["workflow_gate"],
             "large_prompt_only": True,
             "automatic_generation": False,
+            "handoff_status": workflow_build.get("status", "not_generated"),
+            "codex_detected": workflow_build.get("codex_detected", False),
+            "designer_detected": workflow_build.get("designer_detected", False),
+            "builder_toolkit_ready": workflow_build.get("builder_toolkit_ready", False),
+            "beautification_ready": workflow_build.get("beautification_ready", False),
         },
         "stages": sequence.get("stages", []),
     }
 
 
-def _workflow_handoff_prompt(manifest: dict[str, Any], readiness: dict[str, Any]) -> str:
+def _sanitize_large_prompt_for_handoff(large_prompt: str) -> str:
+    sanitized = large_prompt
+    sanitized = re.sub(
+        r"Suggested usage pattern:\s*```text.*?```\s*",
+        "Suggested usage pattern:\n\nThe project-specific usage pattern has been resolved in the Case Inputs section above.\n\n",
+        sanitized,
+        flags=re.DOTALL,
+    )
+    sanitized = re.sub(
+        r"Required full build stack:\s*1\..*?If this stack is not followed, the build is out of process\.\s*",
+        (
+            "Required full build stack:\n\n"
+            "Use the generated Case Inputs section above as the resolved build stack for this project. "
+            "Do not reintroduce generic placeholders.\n\n"
+        ),
+        sanitized,
+        flags=re.DOTALL,
+    )
+    sanitized = sanitized.replace("[INSERT PATH]", "resolved in Case Inputs above")
+    sanitized = sanitized.replace("[INSERT SOURCE STYLE]", "resolved from the approved source-system notes")
+    return sanitized
+
+
+def _workflow_handoff_prompt(manifest: dict[str, Any], readiness: dict[str, Any], preflight: dict[str, Any]) -> str:
     large_prompt = LARGE_PROMPT_PATH.read_text(encoding="utf-8") if LARGE_PROMPT_PATH.exists() else "Large prompt pack is missing from the process pack."
-    sop_path = run_dir(manifest["run_id"]) / "docs" / "03_accelerator_sop.md"
-    gap_path = run_dir(manifest["run_id"]) / "docs" / "sop_gap_log.md"
-    assessment_path = run_dir(manifest["run_id"]) / "docs" / "sop_architecture_assessment.md"
+    large_prompt = _sanitize_large_prompt_for_handoff(large_prompt)
+    project_dir = run_dir(manifest["run_id"])
+    docs_dir = project_dir / "docs"
     state = "READY" if readiness["workflow_gate"] == "ready" else "BLOCKED"
     blockers = "\n".join(f"- {blocker}" for blocker in readiness["blockers"]) or "- None"
-    return f"""# Next Stage Prompt: Workflow Build Handoff
+    builder_path = TOOLING_DIR / "alteryx_workflow_builder"
+    beautification_path = TOOLING_DIR / "alteryx-beautification"
+    case_inputs = {
+        "Project root": ".",
+        "Discovery conversation": _relative_to_project(project_dir, docs_dir / "01_customer_discovery_conversation.md"),
+        "Guided SOP capture": _relative_to_project(project_dir, docs_dir / "02_guided_sop_capture.md"),
+        "Accelerator SOP": _relative_to_project(project_dir, docs_dir / "03_accelerator_sop.md"),
+        "Gap log": _relative_to_project(project_dir, docs_dir / "sop_gap_log.md"),
+        "Architecture assessment": _relative_to_project(project_dir, docs_dir / "sop_architecture_assessment.md"),
+        "Raw transcript folder": "data/raw/transcripts",
+        "Generated data folder": "data/generated",
+        "Workflow output folder": "workflows",
+        "Validation output folder": "validation",
+        "Workflow build manifest": WORKFLOW_MANIFEST_ARTIFACT,
+        "Alteryx workflow-builder toolkit": _relative_to_project(project_dir, builder_path),
+        "Beautification rules": _relative_to_project(project_dir, beautification_path),
+        "Reusable Large prompt source": _relative_to_project(project_dir, LARGE_PROMPT_PATH),
+    }
+    case_input_lines = "\n".join(f"- {label}: `{value}`" for label, value in case_inputs.items())
+    detected = "\n".join(
+        [
+            f"- Codex detected: {'yes' if preflight['codex_detected'] else 'no'}",
+            f"- Alteryx Designer/Engine detected: {'yes' if preflight['designer_detected'] else 'no'}",
+            f"- Builder toolkit bundled: {'yes' if preflight['builder_toolkit_ready'] else 'no'}",
+            f"- Beautification guidance bundled: {'yes' if preflight['beautification_ready'] else 'no'}",
+        ]
+    )
+    return f"""# Codex Workflow Build Prompt: {manifest['customer_name']} / {manifest['project_name']}
 
 State: {state}
+Generated: {utc_now()}
+Project ID: `{manifest['run_id']}`
 
-This project follows Jon's Large-only workflow build process. Do not start workflow generation from the SOP alone.
+This is the project-specific, hydrated workflow-build prompt. Do not edit Jon's reusable Large prompt source. If the reusable prompt changes in Git, regenerate this handoff from the cockpit so the project keeps the latest approved process with the correct case inputs.
 
-## Required Local Inputs
-- Accelerator SOP: `{sop_path.name}`
-- Gap log: `{gap_path.name}`
-- Architecture assessment: `{assessment_path.name}`
-- Project folders: `docs`, `data/raw`, `data/generated`, `status`, `workflows`
+## Operating Mode
+
+You are Codex running locally with access to this project folder. Build the Alteryx Designer workflow only after checking the SOP gate state below.
+
+- If State is `BLOCKED`, do not build the workflow. Read the gap log, explain what is missing, and update the project plan only if asked.
+- If State is `READY`, build the workflow from the approved SOP and case inputs below.
+- Keep all generated assets inside this project folder. Do not reference customer source folders or external systems.
+- Use sanitized/sample data only unless the user explicitly provides approved local inputs.
+
+## Case Inputs
+
+{case_input_lines}
 
 ## Current Blockers
+
 {blockers}
 
-## Build Instruction
-Use the Large prompt below only after the SOP gate is ready. If blocked, resolve the gap log first.
+## Local Preflight
+
+{detected}
+
+## Mandatory Beautification Layer
+
+Apply the bundled Alteryx beautification rules as build requirements, not as optional polish.
+
+- Use a title-first canvas with a clear left-to-right narrative.
+- Place every real tool inside a contextual container with compact, useful annotations.
+- Apply aggressive spiderweb reduction: minimize connector crossings, avoid crowded fan-in knots, separate branch lanes, and reroute geometry until the rendered workflow reads cleanly.
+- Prefer readability over blind tool-count minimization. Condense only where it improves both maintainability and visual scanability.
+- Render the workflow preview and iterate until the canvas is clean, balanced, readable, and package-safe.
+
+## Expected Build Outputs
+
+- `workflows/main.yxmd` or a clearly named first-slice `.yxmd`.
+- Supporting macros only if they materially improve reuse.
+- Synthetic/sample input data under `data/generated`.
+- Validation outputs under `validation`.
+- `status/workflow_spec.json` describing the built workflow.
+- Rendered preview images proving the workflow is visually reviewable.
+- Updated gap/architecture notes if the SOP was insufficient for implementation.
+
+## Launch Note
+
+If this prompt was opened by the cockpit, it may also have been copied to the clipboard. Paste the entire prompt into local Codex from the project root, then let Codex use the files and tooling paths above.
 
 ---
 
 {large_prompt}
 """
+
+
+def _workflow_helper_script() -> str:
+    return """$ErrorActionPreference = "Stop"
+
+$StatusDir = $PSScriptRoot
+$ProjectRoot = Split-Path -Parent $StatusDir
+$PromptPath = Join-Path $StatusDir "codex_workflow_build_prompt.md"
+
+if (-not (Test-Path $PromptPath)) {
+    Write-Host "Prompt not found: $PromptPath"
+    Read-Host "Press Enter to close"
+    exit 1
+}
+
+$promptText = Get-Content -Raw -LiteralPath $PromptPath
+try {
+    Set-Clipboard -Value $promptText
+    Write-Host "Codex workflow prompt copied to clipboard."
+} catch {
+    Write-Host "Could not copy to clipboard. Open this file manually:"
+    Write-Host $PromptPath
+}
+
+$codexCommand = Get-Command codex -ErrorAction SilentlyContinue
+if ($codexCommand) {
+    Write-Host "Opening Codex in project folder:"
+    Write-Host $ProjectRoot
+    Start-Process -FilePath $codexCommand.Source -WorkingDirectory $ProjectRoot
+} else {
+    Write-Host "Codex was not found on PATH. Open Codex manually in this folder:"
+    Write-Host $ProjectRoot
+}
+
+Write-Host ""
+Write-Host "Paste the clipboard prompt into Codex if it does not appear automatically."
+Read-Host "Press Enter to close"
+"""
+
+
+def generate_workflow_build_handoff(
+    manifest: dict[str, Any],
+    sections: list[Section],
+    readiness: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    project_dir = run_dir(manifest["run_id"])
+    ensure_project_structure(project_dir)
+    status_dir = project_dir / "status"
+    status_dir.mkdir(parents=True, exist_ok=True)
+    readiness = readiness or calculate_readiness(_refresh_artifact_records(manifest), sections)
+    preflight = detect_workflow_environment()
+    prompt_path = project_dir / WORKFLOW_PROMPT_ARTIFACT
+    helper_path = project_dir / WORKFLOW_HELPER_ARTIFACT
+    build_manifest_path = project_dir / WORKFLOW_MANIFEST_ARTIFACT
+    prompt = _workflow_handoff_prompt(manifest, readiness, preflight)
+
+    prompt_path.write_text(prompt, encoding="utf-8")
+    (project_dir / LEGACY_PROMPT_ARTIFACT).write_text(prompt, encoding="utf-8")
+    helper_path.write_text(_workflow_helper_script(), encoding="utf-8")
+
+    build_manifest = {
+        "schema_version": 1,
+        "generated_at": utc_now(),
+        "run_id": manifest["run_id"],
+        "customer_name": manifest["customer_name"],
+        "project_name": manifest["project_name"],
+        "state": readiness["workflow_gate"],
+        "case_inputs": {
+            "docs": "docs",
+            "data_raw": "data/raw",
+            "data_generated": "data/generated",
+            "status": "status",
+            "workflows": "workflows",
+            "validation": "validation",
+            "prompt": WORKFLOW_PROMPT_ARTIFACT,
+            "helper": WORKFLOW_HELPER_ARTIFACT,
+        },
+        "preflight": preflight,
+        "expected_outputs": [
+            "workflows/main.yxmd",
+            "status/workflow_spec.json",
+            "validation/validation_report.json",
+            "validation/workflow_preview.png",
+        ],
+        "blockers": readiness["blockers"],
+        "notes": "Codex is the workflow-building brain. The cockpit prepares context, prompts, tooling, and gates.",
+    }
+    build_manifest_path.write_text(json.dumps(build_manifest, indent=2), encoding="utf-8")
+
+    generated_at = utc_now()
+    for artifact in [WORKFLOW_PROMPT_ARTIFACT, WORKFLOW_HELPER_ARTIFACT, WORKFLOW_MANIFEST_ARTIFACT, LEGACY_PROMPT_ARTIFACT]:
+        manifest.setdefault("artifacts", {}).setdefault(artifact, {})
+        manifest["artifacts"][artifact]["generated_at"] = generated_at
+
+    manifest.setdefault("workflow_build", {}).update(
+        {
+            "status": "prompt_ready" if readiness["workflow_gate"] == "ready" else "blocked",
+            "prompt_path": str(prompt_path),
+            "helper_script_path": str(helper_path),
+            "manifest_path": str(build_manifest_path),
+            "generated_at": generated_at,
+            **{key: preflight[key] for key in ["codex_detected", "codex_path", "designer_detected", "engine_path", "designer_path", "tooling_bundle_version", "builder_toolkit_ready", "beautification_ready"]},
+        }
+    )
+    return _refresh_artifact_records(manifest)
 
 
 def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str, Any]:
@@ -890,15 +1269,72 @@ def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str
         )
 
     refreshed_readiness = calculate_readiness(_refresh_artifact_records(manifest), sections)
+    manifest = generate_workflow_build_handoff(manifest, sections, refreshed_readiness)
     status = _pipeline_status(manifest, refreshed_readiness)
-    (status_dir / "pipeline_status.json").write_text(json.dumps(status, indent=2), encoding="utf-8")
+    (status_dir / PIPELINE_STATUS_ARTIFACT.removeprefix("status/")).write_text(json.dumps(status, indent=2), encoding="utf-8")
     (status_dir / "pipeline_log.md").write_text(
         f"# Pipeline Log\n\n- {utc_now()}: Generated cockpit document chain. Workflow gate: {refreshed_readiness['workflow_gate']}.\n",
         encoding="utf-8",
     )
-    (status_dir / "next_stage_prompt.md").write_text(_workflow_handoff_prompt(manifest, refreshed_readiness), encoding="utf-8")
 
     return _refresh_artifact_records(manifest)
+
+
+def _copy_text_to_clipboard(text: str) -> bool:
+    if os.name != "nt":
+        return False
+    try:
+        subprocess.run(
+            ["powershell", "-NoProfile", "-Command", "Set-Clipboard -Value ([Console]::In.ReadToEnd())"],
+            input=text,
+            text=True,
+            check=True,
+            capture_output=True,
+            timeout=6,
+        )
+        return True
+    except (subprocess.SubprocessError, OSError):
+        return False
+
+
+def launch_codex_for_run(manifest: dict[str, Any], sections: list[Section]) -> dict[str, Any]:
+    readiness = calculate_readiness(_refresh_artifact_records(manifest), sections)
+    if readiness["workflow_gate"] != "ready":
+        raise RuntimeError("Workflow build is still blocked by the SOP gate.")
+
+    manifest = generate_workflow_build_handoff(manifest, sections, readiness)
+    workflow_build = manifest.get("workflow_build", {})
+    codex_path = workflow_build.get("codex_path")
+    prompt_path = Path(workflow_build.get("prompt_path", ""))
+    if not codex_path:
+        raise RuntimeError("Codex was not detected on this machine.")
+    if not prompt_path.exists():
+        raise RuntimeError("Workflow build prompt is missing. Regenerate the handoff first.")
+
+    copied = _copy_text_to_clipboard(prompt_path.read_text(encoding="utf-8"))
+    creationflags = subprocess.CREATE_NEW_CONSOLE if os.name == "nt" else 0
+    subprocess.Popen([codex_path], cwd=str(run_dir(manifest["run_id"])), creationflags=creationflags)
+    manifest.setdefault("workflow_build", {}).update(
+        {
+            "last_launch_at": utc_now(),
+            "last_launch_status": "launched_codex_prompt_copied" if copied else "launched_codex_copy_failed",
+        }
+    )
+    return _refresh_artifact_records(manifest)
+
+
+def open_project_subfolder(manifest: dict[str, Any], subfolder: str) -> None:
+    allowed = {"project": ".", "workflows": "workflows", "status": "status", "validation": "validation"}
+    relative = allowed.get(subfolder)
+    if relative is None:
+        raise ValueError("Unsupported folder target.")
+    target = (run_dir(manifest["run_id"]) / relative).resolve()
+    project_dir = run_dir(manifest["run_id"]).resolve()
+    if target != project_dir and project_dir not in target.parents:
+        raise ValueError("Folder target is outside this project.")
+    target.mkdir(parents=True, exist_ok=True)
+    if os.name == "nt":
+        subprocess.Popen(["explorer", str(target)])
 
 
 def sync_generated_docs(manifest: dict[str, Any]) -> dict[str, Any]:
@@ -923,7 +1359,7 @@ def delete_run(run_id: str) -> None:
 
 def artifact_cards(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     records = _refresh_artifact_records(manifest).get("artifacts", {})
-    return [records[name] for name in [*DOC_ARTIFACTS, "status/next_stage_prompt.md"] if name in records]
+    return [records[name] for name in VISIBLE_ARTIFACTS if name in records]
 
 
 def artifact_file_path(run_id: str, artifact_key: str) -> Path:

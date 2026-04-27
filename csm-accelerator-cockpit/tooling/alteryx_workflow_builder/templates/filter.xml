@@ -1,0 +1,12 @@
+<Node ToolID="{{TOOL_ID}}">
+  <GuiSettings Plugin="AlteryxBasePluginsGui.Filter.Filter" Position="{{X}},{{Y}}" />
+  <Properties>
+    <Configuration>
+      <Expression>{{CONDITION}}</Expression>
+      {{CONFIG_XML}}
+    </Configuration>
+    <Annotation DisplayMode="0">
+      <Name>{{LABEL}}</Name>
+    </Annotation>
+  </Properties>
+</Node>

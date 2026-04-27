@@ -1,0 +1,20 @@
+<Node ToolID="{{TOOL_ID}}">
+  <GuiSettings Plugin="AlteryxBasePluginsGui.Formula.Formula">
+    <Position x="{{X}}" y="{{Y}}" />
+  </GuiSettings>
+  <Properties>
+    <Configuration>
+      <FormulaFields>
+        {{FORMULAS}}
+      </FormulaFields>
+      {{CONFIG_XML}}
+    </Configuration>
+    <Annotation DisplayMode="0">
+      <Name />
+      <AnnotationText>{{LABEL}}</AnnotationText>
+      <DefaultAnnotationText>{{LABEL}}</DefaultAnnotationText>
+      <Left value="False" />
+    </Annotation>
+  </Properties>
+  <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxFormula" />
+</Node>

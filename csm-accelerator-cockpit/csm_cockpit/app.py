@@ -22,10 +22,13 @@ from .services import (
     calculate_readiness,
     delete_run,
     generate_docs,
+    generate_workflow_build_handoff,
     list_manifests,
     load_manifest,
     load_question_bank,
+    launch_codex_for_run,
     new_manifest,
+    open_project_subfolder,
     process_stages,
     run_dir,
     save_manifest,
@@ -37,7 +40,7 @@ from .services import (
 )
 
 
-app = FastAPI(title="CSM Accelerator Cockpit V3")
+app = FastAPI(title="CSM Accelerator Cockpit V4")
 app.mount("/static", StaticFiles(directory=static_root()), name="static")
 templates = Jinja2Templates(directory=template_root())
 
@@ -162,6 +165,37 @@ async def generate_run_docs(run_id: str):
     manifest = generate_docs(manifest, sections)
     save_manifest(manifest)
     return _redirect(run_id, "artifact-dashboard")
+
+
+@app.post("/runs/{run_id}/workflow-build")
+async def generate_workflow_build(run_id: str):
+    sections = _sections()
+    manifest = _manifest_or_404(run_id)
+    manifest = generate_workflow_build_handoff(manifest, sections)
+    save_manifest(manifest)
+    return _redirect(run_id, "workflow-handoff")
+
+
+@app.post("/runs/{run_id}/launch-codex")
+async def launch_codex(run_id: str):
+    sections = _sections()
+    manifest = _manifest_or_404(run_id)
+    try:
+        manifest = launch_codex_for_run(manifest, sections)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    save_manifest(manifest)
+    return _redirect(run_id, "workflow-handoff")
+
+
+@app.post("/runs/{run_id}/open-folder")
+async def open_folder(run_id: str, target: str = Form("project")):
+    manifest = _manifest_or_404(run_id)
+    try:
+        open_project_subfolder(manifest, target)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _redirect(run_id, "workflow-handoff")
 
 
 @app.post("/runs/{run_id}/sync-docs")
