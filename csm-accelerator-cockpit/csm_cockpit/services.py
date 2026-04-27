@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 import shutil
@@ -13,11 +14,13 @@ from typing import Any
 from docx import Document
 
 
-APP_VERSION = "0.5.1"
+APP_VERSION = "0.5.2"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 COCKPIT_ROOT = Path(__file__).resolve().parent
-RUNS_DIR = COCKPIT_ROOT / "runs"
+DEFAULT_CANONICAL_RUNS_DIR = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Documents" / "CODEX" / "alteryx" / "accelerator_projects"
+RUNS_DIR = Path(os.environ.get("CODEX_ACCELERATOR_PROJECT_ROOT", str(DEFAULT_CANONICAL_RUNS_DIR))).expanduser()
+LEGACY_RUNS_DIR = COCKPIT_ROOT / "runs"
 STARTER_DOCS_DIR = PROJECT_ROOT / "starter_docs"
 PROCESS_PACK_DIR = PROJECT_ROOT / "process_pack"
 TOOLING_DIR = PROJECT_ROOT / "tooling"
@@ -74,6 +77,7 @@ PROJECT_FOLDERS = [
     "data/raw",
     "data/generated",
     "status",
+    "tooling",
     "workflows",
     "validation",
 ]
@@ -432,20 +436,58 @@ def analyze_transcript_text(
 
 
 def ensure_runs_dir() -> None:
-    RUNS_DIR.mkdir(parents=True, exist_ok=True)
+    RUNS_DIR.resolve().mkdir(parents=True, exist_ok=True)
 
 
 def run_dir(run_id: str) -> Path:
-    return RUNS_DIR / run_id
+    safe_run_id = slugify(run_id)
+    if safe_run_id != run_id:
+        raise ValueError("Invalid project id.")
+    return (RUNS_DIR / run_id).resolve()
 
 
 def manifest_path(run_id: str) -> Path:
-    return run_dir(run_id) / "manifest.json"
+    primary = run_dir(run_id) / "manifest.json"
+    if primary.exists() or not LEGACY_RUNS_DIR.exists():
+        return primary
+    legacy = (LEGACY_RUNS_DIR / run_id / "manifest.json").resolve()
+    if legacy.exists():
+        return legacy
+    return primary
 
 
 def ensure_project_structure(project_dir: Path) -> None:
     for folder in PROJECT_FOLDERS:
         (project_dir / folder).mkdir(parents=True, exist_ok=True)
+    _sync_project_tooling(project_dir)
+
+
+def _copytree_fresh(source: Path, target: Path) -> None:
+    if not source.exists():
+        return
+    shutil.copytree(
+        source,
+        target,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns(
+            "__pycache__",
+            ".pytest_cache",
+            ".mypy_cache",
+            ".venv",
+            "venv",
+            "node_modules",
+            "*.pyc",
+            "*.pyo",
+            ".DS_Store",
+        ),
+    )
+
+
+def _sync_project_tooling(project_dir: Path) -> None:
+    """Keep each handoff project self-contained for local Codex."""
+    tooling_target = project_dir / "tooling"
+    _copytree_fresh(TOOLING_DIR / "alteryx_workflow_builder", tooling_target / "alteryx_workflow_builder")
+    _copytree_fresh(TOOLING_DIR / "alteryx-beautification", tooling_target / "alteryx-beautification")
 
 
 def _artifact_path(project_dir: Path, artifact: str) -> Path:
@@ -466,19 +508,52 @@ def _artifact_record(project_dir: Path, artifact: str) -> dict[str, Any]:
     }
 
 
+def _project_identity_hash(run_id: str, customer_name: str, project_name: str, canonical_project_root: str) -> str:
+    payload = json.dumps(
+        {
+            "run_id": run_id,
+            "customer_name": customer_name,
+            "project_name": project_name,
+            "canonical_project_root": str(Path(canonical_project_root).resolve()),
+        },
+        sort_keys=True,
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def _ensure_project_identity(manifest: dict[str, Any], project_dir: Path | None = None) -> dict[str, Any]:
+    project_dir = (project_dir or run_dir(manifest["run_id"])).resolve()
+    identity = manifest.setdefault("project_identity", {})
+    identity["run_id"] = manifest["run_id"]
+    identity["canonical_project_root"] = str(project_dir)
+    identity["workspace_root"] = str(RUNS_DIR.resolve())
+    identity["manifest_path"] = str(project_dir / "manifest.json")
+    identity["identity_hash"] = _project_identity_hash(
+        manifest["run_id"],
+        manifest.get("customer_name", ""),
+        manifest.get("project_name", ""),
+        identity["canonical_project_root"],
+    )
+    manifest["canonical_project_root"] = identity["canonical_project_root"]
+    return manifest
+
+
 def new_manifest(customer_name: str, project_name: str, csm_name: str, sections: list[Section]) -> dict[str, Any]:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     base = slugify(customer_name or project_name or "customer")
     run_id = f"{timestamp}-{base}"
     project_dir = run_dir(run_id)
+    clean_customer_name = customer_name.strip() or "Unnamed customer"
+    clean_project_name = project_name.strip() or "Accelerator discovery"
     manifest = {
-        "schema_version": 3,
+        "schema_version": 4,
         "run_id": run_id,
-        "customer_name": customer_name.strip() or "Unnamed customer",
-        "project_name": project_name.strip() or "Accelerator discovery",
+        "customer_name": clean_customer_name,
+        "project_name": clean_project_name,
         "csm_name": csm_name.strip(),
         "created_at": utc_now(),
         "updated_at": utc_now(),
+        "canonical_project_root": str(project_dir),
         "project_structure": PROJECT_FOLDERS,
         "process_pack": {
             "source": "Jon accelerator operating system",
@@ -492,6 +567,7 @@ def new_manifest(customer_name: str, project_name: str, csm_name: str, sections:
             "characters": 0,
             "analyzed_at": "",
         },
+        "transcripts": [],
         "capture": {
             section.id: {
                 "status": "not_answered",
@@ -532,11 +608,12 @@ def new_manifest(customer_name: str, project_name: str, csm_name: str, sections:
             "target_docs_dir": str(STARTER_DOCS_DIR),
         },
     }
-    return manifest
+    return _ensure_project_identity(manifest, project_dir)
 
 
 def _refresh_artifact_records(manifest: dict[str, Any]) -> dict[str, Any]:
     project_dir = run_dir(manifest["run_id"])
+    _ensure_project_identity(manifest, project_dir)
     records = manifest.setdefault("artifacts", {})
     for artifact in ALL_ARTIFACTS:
         existing = records.get(artifact, {})
@@ -552,6 +629,7 @@ def save_manifest(manifest: dict[str, Any]) -> None:
     ensure_runs_dir()
     project_dir = run_dir(manifest["run_id"])
     ensure_project_structure(project_dir)
+    _ensure_project_identity(manifest, project_dir)
     manifest["updated_at"] = utc_now()
     _refresh_artifact_records(manifest)
     path = manifest_path(manifest["run_id"])
@@ -561,17 +639,29 @@ def save_manifest(manifest: dict[str, Any]) -> None:
 
 def load_manifest(run_id: str) -> dict[str, Any]:
     manifest = json.loads(manifest_path(run_id).read_text(encoding="utf-8"))
+    _ensure_project_identity(manifest)
+    _transcript_records(manifest)
     return _refresh_artifact_records(manifest)
 
 
 def list_manifests() -> list[dict[str, Any]]:
     ensure_runs_dir()
     manifests = []
-    for path in sorted(RUNS_DIR.glob("*/manifest.json"), reverse=True):
-        try:
-            manifests.append(_refresh_artifact_records(json.loads(path.read_text(encoding="utf-8"))))
-        except json.JSONDecodeError:
+    seen: set[str] = set()
+    for root in [RUNS_DIR, LEGACY_RUNS_DIR]:
+        if not root.exists():
             continue
+        for path in sorted(root.glob("*/manifest.json"), reverse=True):
+            try:
+                manifest = json.loads(path.read_text(encoding="utf-8"))
+                if manifest.get("run_id") in seen:
+                    continue
+                _ensure_project_identity(manifest)
+                _transcript_records(manifest)
+                manifests.append(_refresh_artifact_records(manifest))
+                seen.add(manifest.get("run_id", ""))
+            except (json.JSONDecodeError, ValueError):
+                continue
     return manifests
 
 
@@ -585,6 +675,14 @@ def update_capture_from_form(manifest: dict[str, Any], form: dict[str, Any], sec
     return manifest
 
 
+def reanalyze_transcript_corpus(manifest: dict[str, Any], sections: list[Section]) -> dict[str, Any]:
+    if not _transcript_records(manifest):
+        return manifest
+    combined_text = _refresh_canonical_transcript(manifest)
+    manifest["analysis"] = analyze_transcript_text(combined_text, sections, manifest.get("capture", {}))
+    return manifest
+
+
 def update_approvals_from_form(manifest: dict[str, Any], form: dict[str, Any], sections: list[Section]) -> dict[str, Any]:
     capture = manifest.setdefault("capture", {})
     for section in sections:
@@ -593,45 +691,147 @@ def update_approvals_from_form(manifest: dict[str, Any], form: dict[str, Any], s
     return manifest
 
 
-def _canonical_transcript_md(manifest: dict[str, Any], source_path: Path, text: str) -> str:
+def _transcript_records(manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    records = manifest.setdefault("transcripts", [])
+    if records:
+        return records
+    legacy = manifest.get("transcript", {})
+    stored_path = legacy.get("stored_path", "")
+    if stored_path:
+        records.append(
+            {
+                "id": "legacy-transcript",
+                "source_type": "legacy",
+                "source_path": legacy.get("source_path", ""),
+                "original_name": Path(stored_path).name,
+                "stored_path": stored_path,
+                "text_path": "",
+                "characters": legacy.get("characters", 0),
+                "attached_at": legacy.get("analyzed_at", ""),
+                "is_demo": False,
+            }
+        )
+    return records
+
+
+def _write_transcript_text_file(target: Path, text: str) -> Path:
+    text_target = target.with_suffix(target.suffix + ".txt")
+    text_target.write_text(text, encoding="utf-8")
+    return text_target
+
+
+def _unique_transcript_target(target_dir: Path, source_name: str) -> Path:
+    source = Path(source_name)
+    suffix = source.suffix.lower()
+    stem = slugify(source.stem) or "transcript"
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    target = target_dir / f"{timestamp}-{stem}{suffix}"
+    counter = 2
+    while target.exists():
+        target = target_dir / f"{timestamp}-{stem}-{counter}{suffix}"
+        counter += 1
+    return target
+
+
+def _combined_transcript_text(manifest: dict[str, Any]) -> str:
+    blocks: list[str] = []
+    for index, record in enumerate(_transcript_records(manifest), start=1):
+        stored_path = Path(record.get("stored_path", ""))
+        text_path = Path(record.get("text_path", "")) if record.get("text_path") else None
+        text = ""
+        if text_path and text_path.exists():
+            text = text_path.read_text(encoding="utf-8", errors="replace")
+        elif stored_path.exists():
+            text = read_transcript_text(stored_path)
+        if not text.strip():
+            continue
+        original_name = record.get("original_name") or stored_path.name or f"transcript-{index}"
+        blocks.append(
+            "\n".join(
+                [
+                    f"## Transcript Source {index}: {original_name}",
+                    "",
+                    f"- Source type: {record.get('source_type', 'unknown')}",
+                    f"- Attached: {record.get('attached_at', 'unknown')}",
+                    f"- Transcript ID: `{record.get('id', f'transcript-{index}')}`",
+                    "",
+                    text.strip(),
+                    "",
+                ]
+            )
+        )
+    return "\n".join(blocks).strip()
+
+
+def _refresh_canonical_transcript(manifest: dict[str, Any]) -> str:
     project_dir = run_dir(manifest["run_id"])
     canonical = project_dir / "docs" / "01_customer_discovery_conversation.md"
     canonical.parent.mkdir(parents=True, exist_ok=True)
+    transcript_text = _combined_transcript_text(manifest)
+    records = _transcript_records(manifest)
     content = [
         f"# {manifest['customer_name']} - Discovery Conversation\n\n",
         f"- Project: {manifest['project_name']}\n",
         f"- CSM: {manifest.get('csm_name') or 'Not captured'}\n",
-        f"- Source file: {source_path.name}\n",
-        f"- Captured in cockpit: {utc_now()}\n\n",
-        "## Transcript Text\n\n",
-        text.strip(),
+        f"- Project ID: `{manifest['run_id']}`\n",
+        f"- Canonical project root: `{project_dir}`\n",
+        f"- Transcript sources: {len(records)}\n",
+        f"- Last refreshed in cockpit: {utc_now()}\n\n",
+        "## Transcript Corpus\n\n",
+        transcript_text or "No transcript text has been attached yet.",
         "\n",
     ]
     canonical.write_text("".join(content), encoding="utf-8")
-    return str(canonical)
+    manifest["transcript"] = {
+        "source_path": records[-1].get("source_path", "") if records else "",
+        "stored_path": records[-1].get("stored_path", "") if records else "",
+        "canonical_path": str(canonical),
+        "characters": len(transcript_text),
+        "source_count": len(records),
+        "analyzed_at": utc_now() if records else "",
+        "demo_mode": any(record.get("is_demo") for record in records),
+    }
+    return transcript_text
 
 
-def attach_transcript_from_path(manifest: dict[str, Any], source_path: Path, sections: list[Section]) -> dict[str, Any]:
+def attach_transcript_from_path(
+    manifest: dict[str, Any],
+    source_path: Path,
+    sections: list[Section],
+    source_type: str = "local",
+    original_name: str | None = None,
+) -> dict[str, Any]:
     if not source_path.exists():
         raise FileNotFoundError(f"Transcript not found: {source_path}")
 
     text = read_transcript_text(source_path)
     target_dir = run_dir(manifest["run_id"]) / "data" / "raw" / "transcripts"
     target_dir.mkdir(parents=True, exist_ok=True)
-    safe_name = slugify(source_path.stem) + source_path.suffix.lower()
-    target = target_dir / safe_name
+    display_name = original_name or source_path.name
+    target = source_path if source_path.parent.resolve() == target_dir.resolve() else _unique_transcript_target(target_dir, display_name)
     if source_path.resolve() != target.resolve():
         shutil.copy2(source_path, target)
+    text_path = _write_transcript_text_file(target, text)
+    is_demo = False
+    try:
+        is_demo = source_path.resolve() == DEFAULT_TRANSCRIPT_PATH.resolve()
+    except FileNotFoundError:
+        is_demo = False
 
-    canonical = _canonical_transcript_md(manifest, target, text)
-    manifest["transcript"] = {
+    record = {
+        "id": f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{slugify(Path(display_name).stem) or 'transcript'}",
+        "source_type": source_type,
         "source_path": str(source_path),
+        "original_name": display_name,
         "stored_path": str(target),
-        "canonical_path": canonical,
+        "text_path": str(text_path),
         "characters": len(text),
-        "analyzed_at": utc_now(),
+        "attached_at": utc_now(),
+        "is_demo": is_demo,
     }
-    manifest["analysis"] = analyze_transcript_text(text, sections, manifest.get("capture", {}))
+    manifest.setdefault("transcripts", []).append(record)
+    combined_text = _refresh_canonical_transcript(manifest)
+    manifest["analysis"] = analyze_transcript_text(combined_text, sections, manifest.get("capture", {}))
     return manifest
 
 
@@ -646,9 +846,9 @@ def attach_uploaded_transcript(
         raise ValueError("Transcript upload must be .docx, .md, or .txt.")
     target_dir = run_dir(manifest["run_id"]) / "data" / "raw" / "transcripts"
     target_dir.mkdir(parents=True, exist_ok=True)
-    target = target_dir / f"{slugify(Path(original_name).stem)}{suffix}"
+    target = _unique_transcript_target(target_dir, original_name)
     target.write_bytes(bytes_payload)
-    return attach_transcript_from_path(manifest, target, sections)
+    return attach_transcript_from_path(manifest, target, sections, source_type="upload", original_name=original_name)
 
 
 def calculate_readiness(manifest: dict[str, Any], sections: list[Section]) -> dict[str, Any]:
@@ -991,12 +1191,18 @@ def _workflow_handoff_prompt(manifest: dict[str, Any], readiness: dict[str, Any]
     large_prompt = _sanitize_large_prompt_for_handoff(large_prompt)
     project_dir = run_dir(manifest["run_id"])
     docs_dir = project_dir / "docs"
+    identity = manifest.get("project_identity", {})
+    identity_hash = identity.get("identity_hash", "")
     state = "READY" if readiness["workflow_gate"] == "ready" else "BLOCKED"
     blockers = "\n".join(f"- {blocker}" for blocker in readiness["blockers"]) or "- None"
-    builder_path = TOOLING_DIR / "alteryx_workflow_builder"
-    beautification_path = TOOLING_DIR / "alteryx-beautification"
+    builder_path = project_dir / "tooling" / "alteryx_workflow_builder"
+    beautification_path = project_dir / "tooling" / "alteryx-beautification"
+    transcript_count = manifest.get("transcript", {}).get("source_count", len(_transcript_records(manifest)))
     case_inputs = {
-        "Project root": ".",
+        "Canonical project root": str(project_dir),
+        "Project ID": manifest["run_id"],
+        "Project identity hash": identity_hash,
+        "Project manifest": str(project_dir / "manifest.json"),
         "Discovery conversation": _relative_to_project(project_dir, docs_dir / "01_customer_discovery_conversation.md"),
         "Guided SOP capture": _relative_to_project(project_dir, docs_dir / "02_guided_sop_capture.md"),
         "Accelerator SOP": _relative_to_project(project_dir, docs_dir / "03_accelerator_sop.md"),
@@ -1009,7 +1215,8 @@ def _workflow_handoff_prompt(manifest: dict[str, Any], readiness: dict[str, Any]
         "Workflow build manifest": WORKFLOW_MANIFEST_ARTIFACT,
         "Alteryx workflow-builder toolkit": _relative_to_project(project_dir, builder_path),
         "Beautification rules": _relative_to_project(project_dir, beautification_path),
-        "Reusable Large prompt source": _relative_to_project(project_dir, LARGE_PROMPT_PATH),
+        "Transcript source count": str(transcript_count),
+        "Reusable Large prompt source": str(LARGE_PROMPT_PATH),
     }
     case_input_lines = "\n".join(f"- {label}: `{value}`" for label, value in case_inputs.items())
     detected = "\n".join(
@@ -1025,8 +1232,20 @@ def _workflow_handoff_prompt(manifest: dict[str, Any], readiness: dict[str, Any]
 State: {state}
 Generated: {utc_now()}
 Project ID: `{manifest['run_id']}`
+Canonical project root: `{project_dir}`
+Project identity hash: `{identity_hash}`
 
 This is the project-specific, hydrated workflow-build prompt. Do not edit Jon's reusable Large prompt source. If the reusable prompt changes in Git, regenerate this handoff from the cockpit so the project keeps the latest approved process with the correct case inputs.
+
+## Mandatory Identity And Path Gate
+
+Before doing any workflow design or file search, prove that you are in the correct project.
+
+1. Resolve the current working directory and compare it to the canonical project root above.
+2. Read `manifest.json` from the canonical project root and confirm `run_id` equals `{manifest['run_id']}`.
+3. Read `{WORKFLOW_MANIFEST_ARTIFACT}` and confirm `project_identity_hash` equals `{identity_hash}`.
+4. Confirm `docs/01_customer_discovery_conversation.md`, `docs/02_guided_sop_capture.md`, `docs/03_accelerator_sop.md`, and `status/workflow_build_manifest.json` exist under the canonical project root.
+5. If any identity, path, or SOP-gate check fails, stop. Do not search parent folders, sibling projects, demo folders, shelf projects, Downloads, or customer folders as fallbacks.
 
 ## Operating Mode
 
@@ -1036,6 +1255,7 @@ You are Codex running locally with access to this project folder. Build the Alte
 - If State is `READY`, build the workflow from the approved SOP and case inputs below.
 - Keep all generated assets inside this project folder. Do not reference customer source folders or external systems.
 - Use sanitized/sample data only unless the user explicitly provides approved local inputs.
+- Treat bundled demo transcripts as demo/training context only. Never substitute another nearby accelerator project when this project's files are missing.
 
 ## Case Inputs
 
@@ -1079,15 +1299,39 @@ If this prompt was opened by the cockpit, it may also have been copied to the cl
 """
 
 
-def _workflow_helper_script() -> str:
-    return """$ErrorActionPreference = "Stop"
+def _workflow_helper_script(manifest: dict[str, Any]) -> str:
+    project_dir = run_dir(manifest["run_id"])
+    identity_hash = manifest.get("project_identity", {}).get("identity_hash", "")
+    run_id = manifest["run_id"]
+    project_dir_literal = str(project_dir).replace("'", "''")
+    script = """$ErrorActionPreference = "Stop"
 
-$StatusDir = $PSScriptRoot
-$ProjectRoot = Split-Path -Parent $StatusDir
+$ExpectedProjectRoot = @'
+__PROJECT_ROOT__
+'@
+$ProjectRoot = (Resolve-Path -LiteralPath $ExpectedProjectRoot).Path
+$StatusDir = Join-Path $ProjectRoot "status"
 $PromptPath = Join-Path $StatusDir "codex_workflow_build_prompt.md"
+$BuildManifestPath = Join-Path $StatusDir "workflow_build_manifest.json"
+$ProjectManifestPath = Join-Path $ProjectRoot "manifest.json"
 
 if (-not (Test-Path $PromptPath)) {
     Write-Host "Prompt not found: $PromptPath"
+    Read-Host "Press Enter to close"
+    exit 1
+}
+if (-not (Test-Path $ProjectManifestPath) -or -not (Test-Path $BuildManifestPath)) {
+    Write-Host "Project identity files are missing. Refusing to launch Codex against an unsafe folder."
+    Read-Host "Press Enter to close"
+    exit 1
+}
+
+$ProjectManifest = Get-Content -Raw -LiteralPath $ProjectManifestPath | ConvertFrom-Json
+$BuildManifest = Get-Content -Raw -LiteralPath $BuildManifestPath | ConvertFrom-Json
+if ($ProjectManifest.run_id -ne "__RUN_ID__" -or $BuildManifest.project_identity_hash -ne "__IDENTITY_HASH__") {
+    Write-Host "Project identity mismatch. Refusing fallback search or launch."
+    Write-Host "Expected run id: __RUN_ID__"
+    Write-Host "Expected identity: __IDENTITY_HASH__"
     Read-Host "Press Enter to close"
     exit 1
 }
@@ -1115,6 +1359,7 @@ Write-Host ""
 Write-Host "Paste the clipboard prompt into Codex if it does not appear automatically."
 Read-Host "Press Enter to close"
 """
+    return script.replace("__PROJECT_ROOT__", project_dir_literal).replace("__RUN_ID__", run_id).replace("__IDENTITY_HASH__", identity_hash)
 
 
 def generate_workflow_build_handoff(
@@ -1135,12 +1380,14 @@ def generate_workflow_build_handoff(
 
     prompt_path.write_text(prompt, encoding="utf-8")
     (project_dir / LEGACY_PROMPT_ARTIFACT).write_text(prompt, encoding="utf-8")
-    helper_path.write_text(_workflow_helper_script(), encoding="utf-8")
+    helper_path.write_text(_workflow_helper_script(manifest), encoding="utf-8")
 
     build_manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": utc_now(),
         "run_id": manifest["run_id"],
+        "canonical_project_root": str(project_dir),
+        "project_identity_hash": manifest.get("project_identity", {}).get("identity_hash", ""),
         "customer_name": manifest["customer_name"],
         "project_name": manifest["project_name"],
         "state": readiness["workflow_gate"],
@@ -1153,7 +1400,19 @@ def generate_workflow_build_handoff(
             "validation": "validation",
             "prompt": WORKFLOW_PROMPT_ARTIFACT,
             "helper": WORKFLOW_HELPER_ARTIFACT,
+            "project_manifest": "manifest.json",
         },
+        "absolute_case_inputs": {
+            "project_root": str(project_dir),
+            "project_manifest": str(project_dir / "manifest.json"),
+            "workflow_build_manifest": str(build_manifest_path),
+            "prompt": str(prompt_path),
+            "docs": str(project_dir / "docs"),
+            "workflows": str(project_dir / "workflows"),
+            "validation": str(project_dir / "validation"),
+        },
+        "transcripts": manifest.get("transcripts", []),
+        "demo_mode": manifest.get("transcript", {}).get("demo_mode", False),
         "preflight": preflight,
         "expected_outputs": [
             "workflows/main.yxmd",
@@ -1197,6 +1456,8 @@ def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str
         f"# {manifest['customer_name']} - {manifest['project_name']}\n\n"
         f"- CSM: {manifest.get('csm_name') or 'Not captured'}\n"
         f"- Project ID: `{manifest['run_id']}`\n"
+        f"- Canonical project root: `{run_dir(manifest['run_id'])}`\n"
+        f"- Transcript sources: {manifest.get('transcript', {}).get('source_count', len(_transcript_records(manifest)))}\n"
         f"- Generated: {utc_now()}\n"
         f"- Process: Jon accelerator operating system, Large-only workflow handoff\n\n"
     )

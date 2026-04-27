@@ -30,6 +30,7 @@ from .services import (
     new_manifest,
     open_project_subfolder,
     process_stages,
+    reanalyze_transcript_corpus,
     run_dir,
     save_manifest,
     static_root,
@@ -40,7 +41,7 @@ from .services import (
 )
 
 
-app = FastAPI(title="CSM Accelerator Cockpit V4")
+app = FastAPI(title="CSM Accelerator Cockpit V4.2")
 app.mount("/static", StaticFiles(directory=static_root()), name="static")
 templates = Jinja2Templates(directory=template_root())
 
@@ -115,8 +116,7 @@ async def save_capture(run_id: str, request: Request):
     manifest = _manifest_or_404(run_id)
     form = dict(await request.form())
     update_capture_from_form(manifest, form, sections)
-    if manifest.get("transcript", {}).get("stored_path"):
-        attach_transcript_from_path(manifest, Path(manifest["transcript"]["stored_path"]), sections)
+    reanalyze_transcript_corpus(manifest, sections)
     save_manifest(manifest)
     return _redirect(run_id, "guided-call")
 
@@ -133,7 +133,7 @@ async def analyze_transcript(
     try:
         if transcript_source == "sample":
             source = Path(transcript_path.strip()) if transcript_path.strip() else DEFAULT_TRANSCRIPT_PATH
-            manifest = attach_transcript_from_path(manifest, source, sections)
+            manifest = attach_transcript_from_path(manifest, source, sections, source_type="bundled_demo")
         elif transcript_file and transcript_file.filename:
             payload = await transcript_file.read()
             manifest = attach_uploaded_transcript(manifest, transcript_file.filename, payload, sections)

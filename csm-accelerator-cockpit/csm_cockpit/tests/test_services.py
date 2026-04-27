@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -70,6 +71,29 @@ class CockpitServicesTest(unittest.TestCase):
             finally:
                 services.RUNS_DIR = original_runs_dir
 
+    def test_follow_up_transcripts_are_additive(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp) / "runs"
+            first = Path(tmp) / "first.md"
+            second = Path(tmp) / "follow-up.md"
+            first.write_text("The business problem is manual work and slow prioritisation.", encoding="utf-8")
+            second.write_text("Value Realization: success means halving the time taken and measuring hours saved.", encoding="utf-8")
+            try:
+                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+                services.save_manifest(manifest)
+                manifest = services.attach_transcript_from_path(manifest, first, sections)
+                manifest = services.attach_transcript_from_path(manifest, second, sections)
+                canonical = Path(manifest["transcript"]["canonical_path"]).read_text(encoding="utf-8")
+                self.assertEqual(len(manifest["transcripts"]), 2)
+                self.assertIn("Transcript Source 1", canonical)
+                self.assertIn("Transcript Source 2", canonical)
+                self.assertIn("follow-up.md", canonical)
+                self.assertIn(manifest["analysis"]["value_realization"]["status"], {"supported", "weak_evidence"})
+            finally:
+                services.RUNS_DIR = original_runs_dir
+
     def test_generate_docs_writes_run_folder_only(self) -> None:
         sections = services.JON_SECTIONS
         with tempfile.TemporaryDirectory() as tmp:
@@ -122,12 +146,20 @@ class CockpitServicesTest(unittest.TestCase):
                 prompt_text = prompt_path.read_text(encoding="utf-8")
                 self.assertNotIn("[INSERT PATH]", prompt_text)
                 self.assertNotIn("[INSERT SOURCE STYLE]", prompt_text)
+                self.assertNotIn("Project root: `.`", prompt_text)
+                self.assertIn("Mandatory Identity And Path Gate", prompt_text)
+                self.assertIn(str((Path(tmp) / manifest["run_id"]).resolve()), prompt_text)
+                self.assertIn("Do not search parent folders", prompt_text)
                 self.assertIn("docs/03_accelerator_sop.md", prompt_text)
                 self.assertIn("Alteryx workflow-builder toolkit", prompt_text)
                 self.assertIn("Beautification rules", prompt_text)
                 self.assertIn("spiderweb reduction", prompt_text.lower())
                 self.assertIn("workflows", prompt_text)
                 self.assertEqual(manifest["workflow_build"]["status"], "prompt_ready")
+                build_manifest = json.loads((Path(tmp) / manifest["run_id"] / "status" / "workflow_build_manifest.json").read_text(encoding="utf-8"))
+                self.assertEqual(build_manifest["run_id"], manifest["run_id"])
+                self.assertEqual(build_manifest["canonical_project_root"], str((Path(tmp) / manifest["run_id"]).resolve()))
+                self.assertEqual(build_manifest["project_identity_hash"], manifest["project_identity"]["identity_hash"])
             finally:
                 services.RUNS_DIR = original_runs_dir
 

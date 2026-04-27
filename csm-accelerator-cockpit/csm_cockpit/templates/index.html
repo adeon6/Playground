@@ -16,7 +16,7 @@
       <span class="score-label">SOP readiness</span>
       <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
     {% else %}
-      <span class="score">V4</span>
+      <span class="score">V4.2</span>
       <span class="score-label">CSM cockpit</span>
       <span class="gate blocked">no project</span>
     {% endif %}
@@ -89,8 +89,9 @@
       <section class="empty-state">
         <h2>Create a project, then attach the transcript</h2>
         <p>
-          V4 starts from transcript evidence. Once a project exists, step 1 asks the
-          CSM to either upload a transcript or use the bundled sanitized demo transcript.
+          V4.2 starts from transcript evidence and now keeps follow-up calls additive.
+          Once a project exists, step 1 asks the CSM to upload evidence or use the
+          bundled sanitized demo transcript.
         </p>
       </section>
     {% else %}
@@ -113,12 +114,20 @@
           <p class="eyebrow">1. Transcript Review</p>
           <h2>Attach Evidence First</h2>
           <p class="muted">
-            Choose exactly one source: upload a transcript, or use the bundled sanitized
-            demo transcript. The app stores the original locally and writes Jon's
-            canonical discovery file into the project docs folder.
+            Add the first transcript, then keep adding follow-up calls as they happen.
+            The app builds one combined evidence corpus and writes Jon's canonical
+            discovery file into the project docs folder.
           </p>
           {% if manifest.transcript.analyzed_at %}
-            <p class="success success-line"><span class="done-mark">Done</span> Transcript analyzed: {{ manifest.transcript.characters }} characters captured into the project docs.</p>
+            <p class="success success-line"><span class="done-mark">Done</span> Evidence corpus analyzed: {{ manifest.transcript.source_count or manifest.transcripts|length }} source{{ '' if (manifest.transcript.source_count or manifest.transcripts|length) == 1 else 's' }}, {{ manifest.transcript.characters }} characters captured into the project docs.</p>
+          {% endif %}
+          {% if manifest.transcripts %}
+            <div class="transcript-ledger">
+              <strong>Attached evidence</strong>
+              {% for transcript in manifest.transcripts %}
+                <span>{{ loop.index }}. {{ transcript.original_name }} <small>{{ transcript.source_type }}</small></span>
+              {% endfor %}
+            </div>
           {% endif %}
         </div>
         <form action="/runs/{{ manifest.run_id }}/transcript" method="post" enctype="multipart/form-data" class="stack upload-panel">
@@ -134,7 +143,7 @@
               <input type="hidden" name="transcript_path" value="{% if default_transcript_exists %}{{ default_transcript_path }}{% endif %}">
             </label>
           </div>
-          <button type="submit">Analyze Transcript</button>
+          <button type="submit">Add And Analyze Evidence</button>
         </form>
       </section>
 
