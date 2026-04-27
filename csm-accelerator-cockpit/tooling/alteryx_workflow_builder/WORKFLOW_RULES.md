@@ -99,6 +99,9 @@ When a beautified workflow uses top-of-canvas explanatory text boxes, the primar
 ### R-COMP-001D Styled Header Notes
 Top-of-canvas explanatory text boxes must use visible, intentional fill colors and readable text contrast. Avoid header comments that read like bare unstyled text on the canvas background.
 
+### R-CONFIG-003 Designer-Native TextBox Colors
+TextBox nodes must use Designer-native color XML. Use named colors such as `Black`, `White`, or `Yellow`, or RGB attributes such as `<FillColor r="13" g="49" b="83" />`. Do not write CSS-style hex values as color names, such as `<FillColor name="#0d3153" />`, because Designer may render the box while dropping the text and fill.
+
 ### R-COMP-002 Prep Lane Discipline
 When multiple input branches repeat the same preparation pattern, align them into consistent rows or columns with shared anchor points for input, select, formula, join, and downstream transforms.
 

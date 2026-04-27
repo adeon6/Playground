@@ -316,9 +316,9 @@
             <strong>Prompt ready</strong>
             <span>{% if prompt_artifact.exists %}generated{% else %}not generated{% endif %}</span>
           </article>
-          <article class="preflight-tile {% if workflow.codex_detected %}ready{% else %}blocked{% endif %}">
-            <strong>Codex detected</strong>
-            <span>{% if workflow.codex_detected %}yes{% else %}not found{% endif %}</span>
+          <article class="preflight-tile {% if workflow.codex_detected %}ready{% else %}warning{% endif %}">
+            <strong>Codex launch command</strong>
+            <span>{% if workflow.codex_detected %}available{% else %}not found{% endif %}</span>
           </article>
           <article class="preflight-tile {% if workflow.designer_detected %}ready{% else %}warning{% endif %}">
             <strong>Designer / Engine</strong>
@@ -366,7 +366,7 @@
               <p class="muted">Last launch: {{ workflow.last_launch_at }} / {{ workflow.last_launch_status }}</p>
             {% endif %}
           {% else %}
-            <p class="muted">Codex is not detected on this machine. Open the prompt and paste it into local Codex manually.</p>
+            <p class="muted">No launchable Codex command was found from this web app. If Codex is already open, use Open Prompt or Copy Prompt and paste it into that session manually.</p>
           {% endif %}
         {% else %}
           <p class="muted">Resolve blockers above, generate the docs, then refresh this handoff before asking Codex to build the workflow.</p>

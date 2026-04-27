@@ -26,7 +26,7 @@ V4 uses an explainable local rules engine for transcript coverage, not a hidden 
 - It includes Value Realization and removes ambiguous Known Unknowns / Close Playback sections from the CSM workflow.
 - It requires human approval before the SOP is treated as workflow-build ready.
 - It generates a project-specific Codex workflow-build prompt and helper script after the SOP gate.
-- It detects local Codex and Alteryx Designer/Engine, but it does not contain or replace Codex.
+- It detects whether this machine exposes a launchable Codex command and whether Alteryx Designer/Engine is installed, but it does not contain or replace Codex and cannot detect an already-open Codex chat session.
 
 Optional OpenAI-assisted evidence extraction can be added later, but it is deliberately not required for this shareable prototype.
 
@@ -39,7 +39,7 @@ Codex is still the workflow-building brain. The cockpit prepares the handoff pac
 - `status/workflow_build_manifest.json`
 - project folders for `workflows/`, `validation/`, and generated sample data
 
-The ZIP also bundles the local Alteryx workflow-builder toolkit and beautification guidance under `tooling/`. When the SOP gate is ready, the UI can copy the hydrated prompt, open the workflow folder, and optionally launch local Codex if it is detected on the machine.
+The ZIP also bundles the local Alteryx workflow-builder toolkit and beautification guidance under `tooling/`. When the SOP gate is ready, the UI can copy the hydrated prompt, open the workflow folder, and optionally launch local Codex if a launchable Codex command is detected on the machine.
 
 ## Jon Process Pack
 

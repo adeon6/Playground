@@ -20,6 +20,7 @@
 - Use separate comment boxes only when they truly improve orientation.
 - Keep comments close to the tools they explain.
 - Avoid turning the canvas into a poster.
+- TextBox/comment colors must be Designer-native. Use named colors or RGB attributes; do not emit CSS-style hex color names such as `name="#0d3153"`, because Designer can drop the textbox text/fill even when the preview renderer looks correct.
 
 ## Geometry Rules
 

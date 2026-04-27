@@ -55,6 +55,7 @@ Use this skill when a workflow needs to look intentional and readable on the can
 - Every real Alteryx tool should belong to a clearly titled contextual container in beautified workflows.
 - If a connector crossing can be removed by geometry without harming the story, remove it.
 - A workflow is not visually complete if the reader has to decode a spiderweb to understand it.
+- TextBox/comment styling must use Designer-native color XML. Do not use CSS-style hex values as `name` attributes for `TextColor` or `FillColor`; use named colors or `r`/`g`/`b` attributes so Designer displays the text and fill.
 
 ## Read These References
 

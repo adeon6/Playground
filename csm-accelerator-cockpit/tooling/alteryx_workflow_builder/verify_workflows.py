@@ -52,6 +52,7 @@ CHECK_IMPLEMENTATION = {
     "R-NAME-001": "check_naming",
     "R-NAME-002": "check_naming",
     "R-CONFIG-001": "check_configuration",
+    "R-CONFIG-003": "check_configuration",
     "R-CONFIG-002": "check_structure",
 }
 
@@ -733,6 +734,23 @@ def check_configuration(ctx: WorkflowContext) -> List[Violation]:
     ver = ctx.root.get('yxmdVer', '')
     if ver not in {'2025.1', '2025.2'}:
         out.append(make_violation(ctx.path, 'R-CONFIG-001', 'M-CONFIG-001', 'document', 'major', f'yxmdVer expected 2025.1 by default or an explicitly waived supported version (2025.2); got {ver}'))
+    for layout in collect_layout_nodes(ctx.root):
+        if layout.plugin != TEXTBOX_PLUGIN:
+            continue
+        for color_tag in ('TextColor', 'FillColor'):
+            color = layout.node.find(f'./Properties/Configuration/{color_tag}')
+            if color is None:
+                continue
+            name = color.get('name') or ''
+            if name.startswith('#'):
+                out.append(make_violation(
+                    ctx.path,
+                    'R-CONFIG-003',
+                    'M-CONFIG-003',
+                    layout.tool_id,
+                    'major',
+                    f'TextBox {layout.tool_id} uses Designer-incompatible {color_tag} name={name}; use named colors or r/g/b attributes instead',
+                ))
     return out
 
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from csm_cockpit import services
 
@@ -129,6 +130,19 @@ class CockpitServicesTest(unittest.TestCase):
                 self.assertEqual(manifest["workflow_build"]["status"], "prompt_ready")
             finally:
                 services.RUNS_DIR = original_runs_dir
+
+    def test_codex_detection_checks_launch_command_not_open_session(self) -> None:
+        with patch("csm_cockpit.services.shutil.which", side_effect=lambda command: r"C:\Tools\codex.exe" if command == "codex" else None):
+            preflight = services.detect_workflow_environment()
+        self.assertTrue(preflight["codex_detected"])
+        self.assertEqual(preflight["codex_path"], r"C:\Tools\codex.exe")
+        self.assertIn("Launch command", preflight["codex_detection_note"])
+
+    def test_codex_detection_has_clear_missing_note(self) -> None:
+        with patch("csm_cockpit.services.shutil.which", return_value=None), patch("csm_cockpit.services.Path.exists", return_value=False):
+            preflight = services.detect_workflow_environment()
+        self.assertFalse(preflight["codex_detected"])
+        self.assertIn("already-open Codex chat cannot be detected", preflight["codex_detection_note"])
 
 
 if __name__ == "__main__":

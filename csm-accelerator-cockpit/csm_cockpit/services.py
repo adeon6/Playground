@@ -13,7 +13,7 @@ from typing import Any
 from docx import Document
 
 
-APP_VERSION = "0.5.0"
+APP_VERSION = "0.5.1"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 COCKPIT_ROOT = Path(__file__).resolve().parent
@@ -515,6 +515,7 @@ def new_manifest(customer_name: str, project_name: str, csm_name: str, sections:
             "manifest_artifact": WORKFLOW_MANIFEST_ARTIFACT,
             "codex_detected": False,
             "codex_path": "",
+            "codex_detection_note": "",
             "designer_detected": False,
             "engine_path": "",
             "designer_path": "",
@@ -777,10 +778,50 @@ def _first_existing(paths: list[Path]) -> Path | None:
     return None
 
 
+def _detect_codex_command() -> str:
+    """Return a launchable Codex command path when the local app exposes one.
+
+    This does not detect an already-open Codex Desktop conversation. It only
+    detects whether the cockpit process can launch a local Codex command.
+    """
+    for env_name in ("CODEX_PATH", "CODEX_CLI", "OPENAI_CODEX_PATH"):
+        raw_path = os.environ.get(env_name, "").strip().strip('"')
+        if raw_path and Path(raw_path).exists():
+            return str(Path(raw_path))
+
+    for command in ("codex", "codex.exe"):
+        detected = shutil.which(command)
+        if detected:
+            return detected
+
+    if os.name == "nt":
+        user_windows_apps = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WindowsApps"
+        alias = user_windows_apps / "codex.exe"
+        if alias.exists():
+            return str(alias)
+
+        package_roots = [
+            Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "WindowsApps",
+            Path(os.environ.get("ProgramW6432", r"C:\Program Files")) / "WindowsApps",
+        ]
+        candidates: list[Path] = []
+        for package_root in package_roots:
+            if not package_root.exists():
+                continue
+            candidates.extend(package_root.glob("OpenAI.Codex_*_*__*/*/resources/codex.exe"))
+            candidates.extend(package_root.glob("OpenAI.Codex_*_*__*/app/resources/codex.exe"))
+        existing = [candidate for candidate in candidates if candidate.exists()]
+        if existing:
+            existing.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+            return str(existing[0])
+
+    return ""
+
+
 def detect_workflow_environment() -> dict[str, Any]:
     program_files = Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
     program_files_x86 = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
-    codex_path = shutil.which("codex") or ""
+    codex_path = _detect_codex_command()
     engine = _first_existing(
         [
             program_files / "Alteryx" / "bin" / "AlteryxEngineCmd.exe",
@@ -803,6 +844,7 @@ def detect_workflow_environment() -> dict[str, Any]:
     return {
         "codex_detected": bool(codex_path),
         "codex_path": codex_path,
+        "codex_detection_note": "Launch command available" if codex_path else "No launchable Codex command found; an already-open Codex chat cannot be detected from the local web app.",
         "designer_detected": bool(engine or designer),
         "engine_path": str(engine) if engine else "",
         "designer_path": str(designer) if designer else "",
@@ -883,6 +925,7 @@ def refresh_workflow_build_state(manifest: dict[str, Any]) -> dict[str, Any]:
             "manifest_artifact": WORKFLOW_MANIFEST_ARTIFACT,
             "codex_detected": preflight["codex_detected"],
             "codex_path": preflight["codex_path"],
+            "codex_detection_note": preflight["codex_detection_note"],
             "designer_detected": preflight["designer_detected"],
             "engine_path": preflight["engine_path"],
             "designer_path": preflight["designer_path"],
@@ -971,7 +1014,7 @@ def _workflow_handoff_prompt(manifest: dict[str, Any], readiness: dict[str, Any]
     case_input_lines = "\n".join(f"- {label}: `{value}`" for label, value in case_inputs.items())
     detected = "\n".join(
         [
-            f"- Codex detected: {'yes' if preflight['codex_detected'] else 'no'}",
+            f"- Codex launch command: {'available' if preflight['codex_detected'] else 'not found'}",
             f"- Alteryx Designer/Engine detected: {'yes' if preflight['designer_detected'] else 'no'}",
             f"- Builder toolkit bundled: {'yes' if preflight['builder_toolkit_ready'] else 'no'}",
             f"- Beautification guidance bundled: {'yes' if preflight['beautification_ready'] else 'no'}",
@@ -1135,7 +1178,7 @@ def generate_workflow_build_handoff(
             "helper_script_path": str(helper_path),
             "manifest_path": str(build_manifest_path),
             "generated_at": generated_at,
-            **{key: preflight[key] for key in ["codex_detected", "codex_path", "designer_detected", "engine_path", "designer_path", "tooling_bundle_version", "builder_toolkit_ready", "beautification_ready"]},
+            **{key: preflight[key] for key in ["codex_detected", "codex_path", "codex_detection_note", "designer_detected", "engine_path", "designer_path", "tooling_bundle_version", "builder_toolkit_ready", "beautification_ready"]},
         }
     )
     return _refresh_artifact_records(manifest)

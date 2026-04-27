@@ -185,6 +185,7 @@ Key checks:
 - Header and instruction-row width alignment checks.
 - Feedback box style/placement checks.
 - Textbox clipping, annotation overlap, and stage-box containment checks.
+- Designer-native TextBox color checks. Use named colors or `r`/`g`/`b` attributes; never emit CSS hex strings in `TextColor` or `FillColor` `name` attributes.
 
 ## Security and Governance
 - Never embed API keys, passwords, or credentials.
