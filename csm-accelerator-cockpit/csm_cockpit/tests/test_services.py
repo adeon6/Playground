@@ -110,7 +110,7 @@ class CockpitServicesTest(unittest.TestCase):
                     for section in sections
                 }
                 manifest = services.generate_docs(manifest, sections)
-                for artifact in services.DOC_ARTIFACTS:
+                for artifact in [*services.DOC_ARTIFACTS, *services.ACCELERATOR_ASSET_ARTIFACTS, services.PEER_REVIEW_STATUS_ARTIFACT]:
                     path = Path(manifest["artifacts"][artifact]["path"])
                     self.assertTrue(path.exists(), artifact)
                     self.assertTrue(str(path).startswith(tmp))
@@ -123,6 +123,47 @@ class CockpitServicesTest(unittest.TestCase):
                 self.assertTrue((Path(tmp) / manifest["run_id"] / "status" / "next_stage_prompt.md").exists())
                 readiness = services.calculate_readiness(manifest, sections)
                 self.assertEqual(readiness["workflow_gate"], "ready")
+            finally:
+                services.RUNS_DIR = original_runs_dir
+
+    def test_generate_docs_creates_james_accelerator_assets(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp)
+            try:
+                manifest = services.new_manifest("Test Customer", "Inventory Accelerator", "Ada", sections)
+                manifest["capture"]["business_problem"]["notes"] = "Teams manually reconcile inventory exceptions and lose time prioritising action."
+                manifest["capture"]["value_realization"]["notes"] = "Reduce exception review time from 10 hours to 5 hours and measure hours saved weekly."
+                manifest["capture"]["desired_outcome"]["notes"] = "Create a ranked action list for operations."
+                manifest["capture"]["business_questions"]["notes"] = "Which cases should operations review first?"
+                manifest["capture"]["scope_priorities"]["notes"] = "Phase 1 covers one region and active products."
+                manifest["capture"]["source_systems"]["notes"] = "Inputs are CSV exports from the planning system."
+                manifest["capture"]["data_shape_entities"]["notes"] = "Grain is store-product-day with product and store keys."
+                manifest["capture"]["business_rules"]["notes"] = "Flag high-risk exceptions above threshold."
+                manifest["capture"]["output_action"]["notes"] = "Publish action list and leadership summary."
+                manifest["capture"]["validation_trust"]["notes"] = "Validate against trusted operations report."
+                for section in sections:
+                    manifest["capture"][section.id]["status"] = "answered"
+                    manifest["capture"][section.id]["approved"] = True
+                manifest["analysis"] = {
+                    section.id: {"status": "supported", "score": 9, "evidence": [], "summary": "Supported.", "recommendation": "Approved."}
+                    for section in sections
+                }
+                manifest = services.generate_docs(manifest, sections)
+                value_text = (Path(tmp) / manifest["run_id"] / "docs" / "04_value_statement.md").read_text(encoding="utf-8")
+                use_case_text = (Path(tmp) / manifest["run_id"] / "docs" / "05_use_case_summary.md").read_text(encoding="utf-8")
+                case_study_text = (Path(tmp) / manifest["run_id"] / "docs" / "06_case_study_skeleton.md").read_text(encoding="utf-8")
+                self.assertIn("Reduce exception review time", value_text)
+                self.assertIn("manually reconcile inventory exceptions", value_text)
+                self.assertIn("Which cases should operations review first?", use_case_text)
+                self.assertIn("pre-delivery draft", case_study_text)
+                for artifact in ["07_accelerator_101.md", "08_accelerator_102.md", "09_accelerator_201.md"]:
+                    self.assertIn(artifact, manifest["artifacts"])
+                    self.assertEqual(manifest["artifacts"][artifact]["group"], "customer_facing_assets")
+                self.assertEqual(manifest["peer_review"]["state"], "ready_for_peer_review")
+                peer_status = json.loads((Path(tmp) / manifest["run_id"] / services.PEER_REVIEW_STATUS_ARTIFACT).read_text(encoding="utf-8"))
+                self.assertTrue(peer_status["ready_for_peer_review"])
             finally:
                 services.RUNS_DIR = original_runs_dir
 
@@ -151,6 +192,9 @@ class CockpitServicesTest(unittest.TestCase):
                 self.assertIn(str((Path(tmp) / manifest["run_id"]).resolve()), prompt_text)
                 self.assertIn("Do not search parent folders", prompt_text)
                 self.assertIn("docs/03_accelerator_sop.md", prompt_text)
+                self.assertIn("docs/04_value_statement.md", prompt_text)
+                self.assertIn("docs/07_accelerator_101.md", prompt_text)
+                self.assertIn("supporting context", prompt_text)
                 self.assertIn("Alteryx workflow-builder toolkit", prompt_text)
                 self.assertIn("Beautification rules", prompt_text)
                 self.assertIn("spiderweb reduction", prompt_text.lower())

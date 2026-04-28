@@ -16,7 +16,7 @@
       <span class="score-label">SOP readiness</span>
       <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
     {% else %}
-      <span class="score">V4.2</span>
+      <span class="score">V4.3</span>
       <span class="score-label">CSM cockpit</span>
       <span class="gate blocked">no project</span>
     {% endif %}
@@ -89,7 +89,8 @@
       <section class="empty-state">
         <h2>Create a project, then attach the transcript</h2>
         <p>
-          V4.2 starts from transcript evidence and now keeps follow-up calls additive.
+          V4.3 starts from transcript evidence, keeps follow-up calls additive,
+          and generates James-style accelerator assets.
           Once a project exists, step 1 asks the CSM to upload evidence or use the
           bundled sanitized demo transcript.
         </p>
@@ -256,7 +257,7 @@
         <div class="section-title">
           <div>
             <p class="eyebrow">4. Artifact Dashboard</p>
-            <h2>Document Chain And Gate</h2>
+            <h2>Document Chain, Assets, And Gate</h2>
           </div>
           <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
         </div>
@@ -264,7 +265,7 @@
           {% for artifact in artifact_cards %}
             <article class="artifact {% if artifact.exists %}done{% endif %}">
               <strong>{{ artifact.label }}</strong>
-              <span>{{ artifact.status }}</span>
+              <span>{{ artifact.group_label }} / {{ artifact.status }}</span>
               <small>{{ artifact.relative_path }}</small>
               {% if artifact.exists %}
                 <a class="artifact-link" href="/runs/{{ manifest.run_id }}/artifacts/{{ artifact.name }}">Open generated file</a>
@@ -272,6 +273,12 @@
             </article>
           {% endfor %}
         </div>
+        {% if manifest.peer_review %}
+          <p class="muted compact-copy">
+            Peer review: <strong>{{ manifest.peer_review.state }}</strong>.
+            Customer-facing assets are drafted separately from the internal SOP/workflow handoff.
+          </p>
+        {% endif %}
         {% if readiness.blockers %}
           <div class="blockers">
             <h3>Workflow build blocked by:</h3>

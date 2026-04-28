@@ -14,7 +14,7 @@ from typing import Any
 from docx import Document
 
 
-APP_VERSION = "0.5.2"
+APP_VERSION = "0.5.3"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 COCKPIT_ROOT = Path(__file__).resolve().parent
@@ -34,6 +34,7 @@ WORKFLOW_MANIFEST_ARTIFACT = "status/workflow_build_manifest.json"
 LEGACY_PROMPT_ARTIFACT = "status/next_stage_prompt.md"
 PIPELINE_STATUS_ARTIFACT = "status/pipeline_status.json"
 PIPELINE_LOG_ARTIFACT = "status/pipeline_log.md"
+PEER_REVIEW_STATUS_ARTIFACT = "status/peer_review_status.json"
 
 CAPTURE_STATUSES = {
     "answered": "Answered",
@@ -58,18 +59,34 @@ DOC_ARTIFACTS = [
     "sop_architecture_assessment.md",
 ]
 
+ACCELERATOR_ASSET_ARTIFACTS = [
+    "04_value_statement.md",
+    "05_use_case_summary.md",
+    "06_case_study_skeleton.md",
+    "07_accelerator_101.md",
+    "08_accelerator_102.md",
+    "09_accelerator_201.md",
+]
+
 ARTIFACT_LABELS = {
     "01_customer_discovery_conversation.md": "Discovery conversation",
     "02_guided_sop_capture.md": "Guided SOP capture",
     "03_accelerator_sop.md": "Accelerator SOP",
     "sop_gap_log.md": "Gap log",
     "sop_architecture_assessment.md": "Architecture assessment",
+    "04_value_statement.md": "Value statement",
+    "05_use_case_summary.md": "Use-case summary",
+    "06_case_study_skeleton.md": "Case-study skeleton",
+    "07_accelerator_101.md": "Accelerator 101",
+    "08_accelerator_102.md": "Accelerator 102",
+    "09_accelerator_201.md": "Accelerator 201",
     WORKFLOW_PROMPT_ARTIFACT: "Codex workflow build prompt",
     WORKFLOW_HELPER_ARTIFACT: "Codex launch helper",
     WORKFLOW_MANIFEST_ARTIFACT: "Workflow build manifest",
     LEGACY_PROMPT_ARTIFACT: "Workflow handoff prompt",
     "status/pipeline_status.json": "Pipeline status",
     "status/pipeline_log.md": "Pipeline log",
+    PEER_REVIEW_STATUS_ARTIFACT: "Peer-review status",
 }
 
 PROJECT_FOLDERS = [
@@ -84,6 +101,8 @@ PROJECT_FOLDERS = [
 
 VISIBLE_ARTIFACTS = [
     *DOC_ARTIFACTS,
+    *ACCELERATOR_ASSET_ARTIFACTS,
+    PEER_REVIEW_STATUS_ARTIFACT,
     WORKFLOW_PROMPT_ARTIFACT,
     WORKFLOW_HELPER_ARTIFACT,
     WORKFLOW_MANIFEST_ARTIFACT,
@@ -498,6 +517,18 @@ def _artifact_path(project_dir: Path, artifact: str) -> Path:
 
 def _artifact_record(project_dir: Path, artifact: str) -> dict[str, Any]:
     path = _artifact_path(project_dir, artifact)
+    if artifact in DOC_ARTIFACTS:
+        group = "internal_build_docs"
+        group_label = "Internal build doc"
+    elif artifact in ACCELERATOR_ASSET_ARTIFACTS:
+        group = "customer_facing_assets"
+        group_label = "Customer-facing asset"
+    elif artifact.startswith("status/"):
+        group = "status_and_review"
+        group_label = "Status / review"
+    else:
+        group = "workflow_handoff"
+        group_label = "Workflow handoff"
     return {
         "name": artifact,
         "label": ARTIFACT_LABELS.get(artifact, artifact),
@@ -505,6 +536,8 @@ def _artifact_record(project_dir: Path, artifact: str) -> dict[str, Any]:
         "relative_path": str(path.relative_to(project_dir)).replace("\\", "/"),
         "exists": path.exists(),
         "status": "generated" if path.exists() else "not_generated",
+        "group": group,
+        "group_label": group_label,
     }
 
 
@@ -964,6 +997,218 @@ def _gap_rows(manifest: dict[str, Any], sections: list[Section]) -> list[dict[st
     return rows
 
 
+def _capture_note(manifest: dict[str, Any], section_id: str, fallback: str) -> str:
+    note = manifest.get("capture", {}).get(section_id, {}).get("notes", "").strip()
+    if note:
+        return note
+    analysis = manifest.get("analysis", {}).get(section_id, {})
+    summary = analysis.get("summary", "").strip()
+    if summary and analysis.get("status") in {"supported", "weak_evidence"}:
+        return summary
+    return fallback
+
+
+def _missing_asset_inputs(manifest: dict[str, Any]) -> list[str]:
+    missing = []
+    required = {
+        "business_problem": "Business problem",
+        "value_realization": "Value realization",
+        "desired_outcome": "Desired outcome",
+        "source_systems": "Source systems",
+        "data_shape_entities": "Data shape/entities",
+        "business_rules": "Business rules",
+        "output_action": "Output/action",
+        "validation_trust": "Validation/trust",
+    }
+    for section_id, label in required.items():
+        item = manifest.get("capture", {}).get(section_id, {})
+        if not item.get("notes", "").strip():
+            missing.append(label)
+    return missing
+
+
+def _asset_gap_lines(manifest: dict[str, Any]) -> str:
+    missing = _missing_asset_inputs(manifest)
+    if not missing:
+        return "- No customer-facing asset gaps detected from the approved capture.\n"
+    return "".join(f"- {item}: add a clearer CSM/customer answer before customer reuse.\n" for item in missing)
+
+
+def _asset_content_by_name(manifest: dict[str, Any], common_header: str) -> dict[str, str]:
+    business_problem = _capture_note(manifest, "business_problem", "- Placeholder: business problem requires confirmation.")
+    value_realization = _capture_note(manifest, "value_realization", "- Placeholder: value driver, baseline, target KPI, and measurement method require confirmation.")
+    current_process = _capture_note(manifest, "current_process", "- Placeholder: current process requires confirmation.")
+    desired_outcome = _capture_note(manifest, "desired_outcome", "- Placeholder: desired outcome requires confirmation.")
+    business_questions = _capture_note(manifest, "business_questions", "- Placeholder: business questions require confirmation.")
+    scope_priorities = _capture_note(manifest, "scope_priorities", "- Placeholder: first-slice scope and exclusions require confirmation.")
+    source_systems = _capture_note(manifest, "source_systems", "- Placeholder: source systems and input ownership require confirmation.")
+    data_shape = _capture_note(manifest, "data_shape_entities", "- Placeholder: grain, entities, keys, and expected fields require confirmation.")
+    business_rules = _capture_note(manifest, "business_rules", "- Placeholder: business rules, thresholds, and exceptions require confirmation.")
+    output_action = _capture_note(manifest, "output_action", "- Placeholder: outputs, consumers, and action path require confirmation.")
+    validation_trust = _capture_note(manifest, "validation_trust", "- Placeholder: validation method and sign-off owner require confirmation.")
+    operational_constraints = _capture_note(manifest, "operational_constraints", "- Placeholder: operational constraints and deployment expectations require confirmation.")
+    asset_gaps = _asset_gap_lines(manifest)
+
+    value_statement = [
+        common_header,
+        "## Value Statement\n\n",
+        "This is an upfront value hypothesis generated from discovery. It should be refined with the value team and revisited at close-out.\n\n",
+        "## Reason For Doing This\n\n",
+        business_problem,
+        "\n\n## Value Hypothesis\n\n",
+        value_realization,
+        "\n\n## Baseline And Target\n\n",
+        "- Baseline: captured in the Value Realization notes, or still TBD.\n",
+        "- Target KPI: captured in the Value Realization notes, or still TBD.\n",
+        "- Measurement method: captured in the Value Realization notes, or still TBD.\n\n",
+        "## Qualitative Value\n\n",
+        desired_outcome,
+        "\n\n## Assumptions And Gaps\n\n",
+        asset_gaps,
+        "\n## Close-Out Capture Placeholder\n\n",
+        "- Final measured value: TBD after implementation.\n",
+        "- Evidence source: TBD after implementation.\n",
+        "- Customer quote or playback proof: TBD after implementation.\n",
+    ]
+
+    use_case_summary = [
+        common_header,
+        "## Use-Case Summary\n\n",
+        "## Customer Wants To\n\n",
+        desired_outcome,
+        "\n\n## Current Pain\n\n",
+        business_problem,
+        "\n\n## Current Process\n\n",
+        current_process,
+        "\n\n## Business Questions\n\n",
+        business_questions,
+        "\n\n## Input Data\n\n",
+        source_systems,
+        "\n\n## Workflow Concept\n\n",
+        "- Ingest the approved source extracts.\n",
+        "- Normalize them into reusable accelerator entities.\n",
+        "- Apply the captured business rules and validation checks.\n",
+        "- Publish action-ready outputs for the intended users.\n\n",
+        "## Outputs And Actions\n\n",
+        output_action,
+        "\n\n## Expected Value\n\n",
+        value_realization,
+        "\n\n## Open Gaps\n\n",
+        asset_gaps,
+    ]
+
+    case_study = [
+        common_header,
+        "## Case-Study Skeleton\n\n",
+        "**Status:** pre-delivery draft. This is intentionally generated before implementation so the final story can be refined rather than reconstructed later.\n\n",
+        "## Problem\n\n",
+        business_problem,
+        "\n\n## Solution Approach\n\n",
+        desired_outcome,
+        "\n\n",
+        output_action,
+        "\n\n## Expected Outcome\n\n",
+        value_realization,
+        "\n\n## Implementation Evidence To Add Later\n\n",
+        "- Final workflow/package link: TBD.\n",
+        "- Final measured impact: TBD.\n",
+        "- Customer validation quote: TBD.\n",
+        "- Reusable accelerator asset location: TBD.\n\n",
+        "## Reuse Notes\n\n",
+        scope_priorities,
+        "\n",
+    ]
+
+    accelerator_101 = [
+        common_header,
+        "## Accelerator 101 - Generic Guide\n\n",
+        "## Business Problem\n\n",
+        business_problem,
+        "\n\n## Prerequisites\n\n",
+        "- A named business owner and CSM/consultant owner.\n",
+        "- Approved first-slice scope.\n",
+        "- Sample-safe input extracts or synthetic equivalents.\n\n",
+        "## Input Contract\n\n",
+        source_systems,
+        "\n\n",
+        data_shape,
+        "\n\n## Modular Workflow Architecture\n\n",
+        "- Source contract and profiling.\n",
+        "- Neutral schema normalization.\n",
+        "- Business rule and exception layer.\n",
+        "- Prioritization or action logic.\n",
+        "- Output publishing and governance review.\n\n",
+        "## Step-By-Step Usage\n\n",
+        "- Confirm the use case and first-slice scope.\n",
+        "- Map customer inputs to the generic input contract.\n",
+        "- Run the starter workflow against sample data.\n",
+        "- Review outputs with the business owner.\n",
+        "- Capture gaps for 102/201 deepening.\n\n",
+        "## KPIs\n\n",
+        value_realization,
+        "\n\n## Limitations And Reuse Guidance\n\n",
+        asset_gaps,
+    ]
+
+    accelerator_102 = [
+        common_header,
+        "## Accelerator 102 - Starter Kit Guide\n\n",
+        "## Starter Kit Shape\n\n",
+        "- 101 generic guide.\n",
+        "- 102 starter-kit notes.\n",
+        "- 201 implementation note when the source/system pattern is known.\n",
+        "- Sample or synthetic inputs.\n",
+        "- Workflow output and validation expectations.\n\n",
+        "## Configuration Choices\n\n",
+        scope_priorities,
+        "\n\n## Sample Data Expectations\n\n",
+        source_systems,
+        "\n\n",
+        data_shape,
+        "\n\n## Validation Plan\n\n",
+        validation_trust,
+        "\n\n## Adaptation Notes\n\n",
+        "- Keep the customer-specific fields mapped to neutral entities.\n",
+        "- Keep output names and KPIs aligned with the approved value statement.\n",
+        "- Do not promote assumptions to facts without CSM approval.\n\n",
+        "## Gaps To Resolve Before Reuse\n\n",
+        asset_gaps,
+    ]
+
+    accelerator_201 = [
+        common_header,
+        "## Accelerator 201 - Implementation Note\n\n",
+        "## Source Context\n\n",
+        source_systems,
+        "\n\n## Field And Entity Mapping\n\n",
+        data_shape,
+        "\n\n## Module-Level Build Logic\n\n",
+        "- Input module: validate source contract, required fields, and grain.\n",
+        "- Normalization module: map customer-shaped inputs into reusable accelerator entities.\n",
+        "- Rules module: apply approved definitions, thresholds, and exception logic.\n",
+        "- Output module: publish action, summary, and governance views.\n\n",
+        "## Business Rules\n\n",
+        business_rules,
+        "\n\n## Outputs\n\n",
+        output_action,
+        "\n\n## Governance And Monitoring\n\n",
+        validation_trust,
+        "\n\n",
+        operational_constraints,
+        "\n\n## System-Specific Assumptions\n\n",
+        asset_gaps,
+    ]
+
+    return {
+        "04_value_statement.md": "".join(value_statement),
+        "05_use_case_summary.md": "".join(use_case_summary),
+        "06_case_study_skeleton.md": "".join(case_study),
+        "07_accelerator_101.md": "".join(accelerator_101),
+        "08_accelerator_102.md": "".join(accelerator_102),
+        "09_accelerator_201.md": "".join(accelerator_201),
+    }
+
+
 def _relative_to_project(project_dir: Path, path: Path) -> str:
     try:
         return path.relative_to(project_dir).as_posix()
@@ -1143,6 +1388,7 @@ def refresh_workflow_build_state(manifest: dict[str, Any]) -> dict[str, Any]:
 def _pipeline_status(manifest: dict[str, Any], readiness: dict[str, Any]) -> dict[str, Any]:
     sequence = load_sequence_config()
     workflow_build = manifest.get("workflow_build", {})
+    peer_review = manifest.get("peer_review", {})
     return {
         "run_id": manifest["run_id"],
         "customer_name": manifest["customer_name"],
@@ -1159,8 +1405,38 @@ def _pipeline_status(manifest: dict[str, Any], readiness: dict[str, Any]) -> dic
             "builder_toolkit_ready": workflow_build.get("builder_toolkit_ready", False),
             "beautification_ready": workflow_build.get("beautification_ready", False),
         },
+        "peer_review": peer_review,
         "stages": sequence.get("stages", []),
     }
+
+
+def _write_peer_review_status(manifest: dict[str, Any], readiness: dict[str, Any]) -> dict[str, Any]:
+    project_dir = run_dir(manifest["run_id"])
+    status_path = project_dir / PEER_REVIEW_STATUS_ARTIFACT
+    status_path.parent.mkdir(parents=True, exist_ok=True)
+    existing_state = manifest.get("peer_review", {}).get("state", "draft")
+    all_assets_exist = all((project_dir / "docs" / artifact).exists() for artifact in ACCELERATOR_ASSET_ARTIFACTS)
+    if existing_state in {"reviewed", "published"}:
+        state = existing_state
+    elif readiness["workflow_gate"] == "ready" and all_assets_exist:
+        state = "ready_for_peer_review"
+    else:
+        state = "draft"
+    peer_review = {
+        "state": state,
+        "updated_at": utc_now(),
+        "customer_facing_assets": ACCELERATOR_ASSET_ARTIFACTS,
+        "ready_for_peer_review": state in {"ready_for_peer_review", "reviewed", "published"},
+        "notes": "Customer-facing accelerator assets are generated as Markdown drafts for CSM/Jon review.",
+        "blockers": [] if state != "draft" else [
+            "SOP gate must be ready and all V4.3 accelerator assets must exist before peer review."
+        ],
+    }
+    status_path.write_text(json.dumps(peer_review, indent=2), encoding="utf-8")
+    manifest["peer_review"] = peer_review
+    manifest.setdefault("artifacts", {}).setdefault(PEER_REVIEW_STATUS_ARTIFACT, {})
+    manifest["artifacts"][PEER_REVIEW_STATUS_ARTIFACT]["generated_at"] = peer_review["updated_at"]
+    return manifest
 
 
 def _sanitize_large_prompt_for_handoff(large_prompt: str) -> str:
@@ -1208,6 +1484,13 @@ def _workflow_handoff_prompt(manifest: dict[str, Any], readiness: dict[str, Any]
         "Accelerator SOP": _relative_to_project(project_dir, docs_dir / "03_accelerator_sop.md"),
         "Gap log": _relative_to_project(project_dir, docs_dir / "sop_gap_log.md"),
         "Architecture assessment": _relative_to_project(project_dir, docs_dir / "sop_architecture_assessment.md"),
+        "Value statement": _relative_to_project(project_dir, docs_dir / "04_value_statement.md"),
+        "Use-case summary": _relative_to_project(project_dir, docs_dir / "05_use_case_summary.md"),
+        "Case-study skeleton": _relative_to_project(project_dir, docs_dir / "06_case_study_skeleton.md"),
+        "Accelerator 101": _relative_to_project(project_dir, docs_dir / "07_accelerator_101.md"),
+        "Accelerator 102": _relative_to_project(project_dir, docs_dir / "08_accelerator_102.md"),
+        "Accelerator 201": _relative_to_project(project_dir, docs_dir / "09_accelerator_201.md"),
+        "Peer-review status": PEER_REVIEW_STATUS_ARTIFACT,
         "Raw transcript folder": "data/raw/transcripts",
         "Generated data folder": "data/generated",
         "Workflow output folder": "workflows",
@@ -1256,6 +1539,7 @@ You are Codex running locally with access to this project folder. Build the Alte
 - Keep all generated assets inside this project folder. Do not reference customer source folders or external systems.
 - Use sanitized/sample data only unless the user explicitly provides approved local inputs.
 - Treat bundled demo transcripts as demo/training context only. Never substitute another nearby accelerator project when this project's files are missing.
+- Use the value statement, use-case summary, case-study skeleton, and 101/102/201 drafts as supporting context. They should improve narrative alignment, but customer-facing polish must not block the workflow build if the SOP gate is ready.
 
 ## Case Inputs
 
@@ -1401,6 +1685,13 @@ def generate_workflow_build_handoff(
             "prompt": WORKFLOW_PROMPT_ARTIFACT,
             "helper": WORKFLOW_HELPER_ARTIFACT,
             "project_manifest": "manifest.json",
+            "value_statement": "docs/04_value_statement.md",
+            "use_case_summary": "docs/05_use_case_summary.md",
+            "case_study_skeleton": "docs/06_case_study_skeleton.md",
+            "accelerator_101": "docs/07_accelerator_101.md",
+            "accelerator_102": "docs/08_accelerator_102.md",
+            "accelerator_201": "docs/09_accelerator_201.md",
+            "peer_review_status": PEER_REVIEW_STATUS_ARTIFACT,
         },
         "absolute_case_inputs": {
             "project_root": str(project_dir),
@@ -1557,6 +1848,7 @@ def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str
         "sop_gap_log.md": "".join(gap_log),
         "sop_architecture_assessment.md": "".join(assessment),
     }
+    content_by_name.update(_asset_content_by_name(manifest, common_header))
 
     for name, content in content_by_name.items():
         path = docs_dir / name
@@ -1572,6 +1864,8 @@ def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str
             }
         )
 
+    refreshed_readiness = calculate_readiness(_refresh_artifact_records(manifest), sections)
+    manifest = _write_peer_review_status(manifest, refreshed_readiness)
     refreshed_readiness = calculate_readiness(_refresh_artifact_records(manifest), sections)
     manifest = generate_workflow_build_handoff(manifest, sections, refreshed_readiness)
     status = _pipeline_status(manifest, refreshed_readiness)
