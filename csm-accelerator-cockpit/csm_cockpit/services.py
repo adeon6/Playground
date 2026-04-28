@@ -14,7 +14,7 @@ from typing import Any
 from docx import Document
 
 
-APP_VERSION = "0.5.4"
+APP_VERSION = "0.5.5"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 COCKPIT_ROOT = Path(__file__).resolve().parent
@@ -37,18 +37,19 @@ PIPELINE_LOG_ARTIFACT = "status/pipeline_log.md"
 PEER_REVIEW_STATUS_ARTIFACT = "status/peer_review_status.json"
 
 CAPTURE_STATUSES = {
+    "not_set": "Not selected",
     "answered": "Answered",
-    "partial": "Partial",
+    "partial": "Partially answered",
     "not_answered": "Not answered",
     "needs_follow_up": "Needs follow-up",
 }
 
 EVIDENCE_STATUSES = {
-    "supported": "Supported",
-    "weak_evidence": "Weak evidence",
-    "missing": "Missing",
-    "conflicting": "Conflicting",
-    "not_run": "Not run",
+    "supported": "Answered by transcript",
+    "weak_evidence": "Partially answered by transcript",
+    "missing": "Not answered by transcript",
+    "conflicting": "Needs review",
+    "not_run": "Not answered by transcript",
 }
 
 DOC_ARTIFACTS = [
@@ -662,7 +663,7 @@ SECTION_KEY_MIGRATIONS = {
 
 def _merge_capture_item(existing: dict[str, Any], incoming: dict[str, Any], source_label: str) -> dict[str, Any]:
     merged = dict(existing)
-    if not merged.get("status") or merged.get("status") == "not_answered":
+    if not merged.get("status") or merged.get("status") in {"not_set", "not_answered"}:
         merged["status"] = incoming.get("status", merged.get("status", "not_answered"))
     existing_notes = str(merged.get("notes", "")).strip()
     incoming_notes = str(incoming.get("notes", "")).strip()
@@ -679,7 +680,7 @@ def migrate_manifest_sections(manifest: dict[str, Any], sections: list[Section] 
     valid_ids = {section.id for section in sections}
     capture = manifest.setdefault("capture", {})
     for section in sections:
-        capture.setdefault(section.id, {"status": "not_answered", "notes": "", "approved": False})
+        capture.setdefault(section.id, {"status": "not_set", "notes": "", "approved": False})
     for old_key, new_key in SECTION_KEY_MIGRATIONS.items():
         if old_key in capture:
             capture[new_key] = _merge_capture_item(capture.get(new_key, {}), capture[old_key], old_key)
@@ -687,6 +688,12 @@ def migrate_manifest_sections(manifest: dict[str, Any], sections: list[Section] 
     for key in list(capture.keys()):
         if key not in valid_ids:
             capture.pop(key, None)
+            continue
+        item = capture.setdefault(key, {})
+        if item.get("status") not in CAPTURE_STATUSES:
+            item["status"] = "not_set"
+        item.setdefault("notes", "")
+        item.setdefault("approved", False)
 
     analysis = manifest.setdefault("analysis", {})
     for old_key, new_key in SECTION_KEY_MIGRATIONS.items():
@@ -731,7 +738,7 @@ def new_manifest(customer_name: str, project_name: str, csm_name: str, sections:
         "transcripts": [],
         "capture": {
             section.id: {
-                "status": "not_answered",
+                "status": "not_set",
                 "notes": "",
                 "approved": False,
             }
@@ -834,8 +841,8 @@ def update_capture_from_form(manifest: dict[str, Any], form: dict[str, Any], sec
     capture = manifest.setdefault("capture", {})
     for section in sections:
         item = capture.setdefault(section.id, {})
-        status = str(form.get(f"status_{section.id}", item.get("status", "not_answered")))
-        item["status"] = status if status in CAPTURE_STATUSES else "not_answered"
+        status = str(form.get(f"status_{section.id}", item.get("status", "not_set")))
+        item["status"] = status if status in CAPTURE_STATUSES else "not_set"
         item["notes"] = str(form.get(f"notes_{section.id}", item.get("notes", ""))).strip()
     return manifest
 
@@ -1026,6 +1033,7 @@ def calculate_readiness(manifest: dict[str, Any], sections: list[Section]) -> di
         "partial": 0.65,
         "needs_follow_up": 0.35,
         "not_answered": 0.0,
+        "not_set": 0.0,
     }
     evidence_weights = {
         "supported": 1.0,
@@ -1038,27 +1046,45 @@ def calculate_readiness(manifest: dict[str, Any], sections: list[Section]) -> di
     def avg(values: list[float]) -> int:
         return round((sum(values) / len(values)) * 100) if values else 0
 
-    capture_pct = avg([capture_weights.get(capture.get(section.id, {}).get("status", "not_answered"), 0) for section in required_sections])
+    capture_pct = avg([capture_weights.get(capture.get(section.id, {}).get("status", "not_set"), 0) for section in required_sections])
     approval_pct = avg([1.0 if capture.get(section.id, {}).get("approved") else 0.0 for section in required_sections])
     doc_pct = avg([1.0 if manifest.get("artifacts", {}).get(name, {}).get("exists") else 0.0 for name in DOC_ARTIFACTS])
     overall_pct = round(capture_pct * 0.45 + approval_pct * 0.40 + doc_pct * 0.15)
 
     blockers: list[str] = []
+    blocker_items: list[dict[str, str]] = []
+    generation_missing: list[str] = []
     for section in required_sections:
         item = capture.get(section.id, {})
         evidence_status = analysis.get(section.id, {}).get("status", "not_run")
-        if item.get("status") in {"not_answered", "needs_follow_up"}:
-            blockers.append(f"{section.label}: capture is {CAPTURE_STATUSES.get(item.get('status'), 'not answered')}.")
+        capture_status = item.get("status", "not_set")
+        if capture_status == "not_set":
+            message = f"{section.label}: status not selected."
+            blockers.append(message)
+            blocker_items.append({"message": message, "section_id": section.id, "kind": "capture"})
+            generation_missing.append(f"{section.label}: choose a status")
+        elif capture_status in {"not_answered", "needs_follow_up"}:
+            message = f"{section.label}: capture is {CAPTURE_STATUSES.get(capture_status, 'Not answered')}."
+            blockers.append(message)
+            blocker_items.append({"message": message, "section_id": section.id, "kind": "capture"})
         if evidence_status in {"missing", "conflicting", "not_run"}:
-            blockers.append(f"{section.label}: transcript evidence is {EVIDENCE_STATUSES.get(evidence_status, 'not run')}.")
+            message = f"{section.label}: transcript answer is {EVIDENCE_STATUSES.get(evidence_status, 'Not answered by transcript')}."
+            blockers.append(message)
+            blocker_items.append({"message": message, "section_id": section.id, "kind": "evidence"})
         if not item.get("approved"):
-            blockers.append(f"{section.label}: CSM approval is pending.")
+            message = f"{section.label}: CSM approval is pending."
+            blockers.append(message)
+            blocker_items.append({"message": message, "section_id": section.id, "kind": "approval"})
+            generation_missing.append(f"{section.label}: approve section")
 
     missing_docs = [ARTIFACT_LABELS[name] for name in DOC_ARTIFACTS if not manifest.get("artifacts", {}).get(name, {}).get("exists")]
     if missing_docs:
-        blockers.append("Generated document chain is incomplete.")
+        message = "Generated document chain is incomplete."
+        blockers.append(message)
+        blocker_items.append({"message": message, "section_id": "", "kind": "documents"})
 
     sop_exists = manifest.get("artifacts", {}).get("03_accelerator_sop.md", {}).get("exists", False)
+    generation_ready = not generation_missing
     return {
         "capture_pct": capture_pct,
         "approval_pct": approval_pct,
@@ -1066,6 +1092,9 @@ def calculate_readiness(manifest: dict[str, Any], sections: list[Section]) -> di
         "overall_pct": overall_pct,
         "workflow_gate": "ready" if not blockers and sop_exists else "blocked",
         "blockers": blockers[:14],
+        "blocker_items": blocker_items[:14],
+        "generation_ready": generation_ready,
+        "generation_missing": generation_missing[:8],
         "required_section_count": len(required_sections),
     }
 
@@ -1077,7 +1106,7 @@ def _section_capture_md(section: Section, manifest: dict[str, Any]) -> str:
     lines = [
         f"### {section.label}",
         "",
-        f"- CSM status: {CAPTURE_STATUSES.get(item.get('status', 'not_answered'), 'Not answered')}",
+        f"- CSM status: {CAPTURE_STATUSES.get(item.get('status', 'not_set'), 'Not selected')}",
         f"- CSM approval: {'approved' if item.get('approved') else 'pending'}",
         f"- Transcript evidence: {EVIDENCE_STATUSES.get(analysis.get('status', 'not_run'), 'Not run')}",
         f"- Evidence summary: {analysis.get('summary', 'Transcript analysis has not run yet.')}",
@@ -1106,11 +1135,11 @@ def _gap_rows(manifest: dict[str, Any], sections: list[Section]) -> list[dict[st
     for section in sections:
         capture_item = manifest.get("capture", {}).get(section.id, {})
         analysis_item = manifest.get("analysis", {}).get(section.id, {})
-        capture_status = capture_item.get("status", "not_answered")
+        capture_status = capture_item.get("status", "not_set")
         evidence_status = analysis_item.get("status", "not_run")
         is_required = section.id in REQUIRED_FOR_SOP_GATE
         if (
-            capture_status in {"not_answered", "needs_follow_up"}
+            capture_status in {"not_set", "not_answered", "needs_follow_up"}
             or evidence_status in {"missing", "conflicting", "not_run"}
             or (is_required and not capture_item.get("approved"))
         ):
@@ -1118,7 +1147,7 @@ def _gap_rows(manifest: dict[str, Any], sections: list[Section]) -> list[dict[st
                 {
                     "section": section.label,
                     "required": "yes" if is_required else "supporting",
-                    "capture": CAPTURE_STATUSES.get(capture_status, "Not answered"),
+                    "capture": CAPTURE_STATUSES.get(capture_status, "Not selected"),
                     "evidence": EVIDENCE_STATUSES.get(evidence_status, "Not run"),
                     "approval": "approved" if capture_item.get("approved") else "pending",
                     "next_step": analysis_item.get("recommendation", "CSM follow-up required."),

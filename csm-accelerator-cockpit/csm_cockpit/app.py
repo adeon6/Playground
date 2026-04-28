@@ -43,7 +43,7 @@ from .services import (
 )
 
 
-app = FastAPI(title="CSM Accelerator Cockpit V4.4")
+app = FastAPI(title="CSM Accelerator Cockpit V4.4.1")
 app.mount("/static", StaticFiles(directory=static_root()), name="static")
 templates = Jinja2Templates(directory=template_root())
 
@@ -147,9 +147,10 @@ async def autosave_section(run_id: str, section_id: str, request: Request):
         raise HTTPException(status_code=400, detail="Expected JSON payload.") from exc
 
     capture = manifest.setdefault("capture", {})
-    item = capture.setdefault(section_id, {"status": "not_answered", "notes": "", "approved": False})
-    status = str(payload.get("status", item.get("status", "not_answered")))
-    item["status"] = status if status in CAPTURE_STATUSES else "not_answered"
+    item = capture.setdefault(section_id, {"status": "not_set", "notes": "", "approved": False})
+    status = str(payload.get("status", item.get("status", "not_set")))
+    changed_field = str(payload.get("changed_field", ""))
+    item["status"] = status if status in CAPTURE_STATUSES else "not_set"
     item["notes"] = str(payload.get("notes", item.get("notes", ""))).strip()
     item["approved"] = bool(payload.get("approved", item.get("approved", False)))
 
@@ -159,7 +160,8 @@ async def autosave_section(run_id: str, section_id: str, request: Request):
     readiness = calculate_readiness(refreshed, sections)
     analysis = refreshed.get("analysis", {}).get(section_id, {})
     evidence_status = analysis.get("status", "not_run")
-    should_open = item["status"] in {"partial", "not_answered", "needs_follow_up"}
+    should_open = item["status"] in {"not_set", "partial", "not_answered", "needs_follow_up"}
+    auto_collapse = changed_field == "status" and item["status"] == "answered"
     return {
         "ok": True,
         "section_id": section_id,
@@ -172,6 +174,7 @@ async def autosave_section(run_id: str, section_id: str, request: Request):
         "evidence_label": EVIDENCE_STATUSES.get(evidence_status, "Not run"),
         "readiness": readiness,
         "should_open": should_open,
+        "auto_collapse": auto_collapse,
     }
 
 

@@ -16,7 +16,7 @@
       <span class="score-label">SOP readiness</span>
       <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
     {% else %}
-      <span class="score">V4.4</span>
+      <span class="score">V4.4.1</span>
       <span class="score-label">CSM cockpit</span>
       <span class="gate blocked">no project</span>
     {% endif %}
@@ -97,7 +97,7 @@
       <section class="empty-state">
         <h2>Create a project, then attach transcript evidence</h2>
         <p>
-          V4.4 follows Jon's 11-section discovery template exactly. Once a project exists,
+          V4.4.1 follows Jon's 11-section discovery template exactly. Once a project exists,
           the CSM works section-by-section with autosave, evidence playback, and one
           generate button for the helper files and workflow handoff.
         </p>
@@ -170,15 +170,15 @@
           {% for section in sections %}
             {% set item = manifest.capture.get(section.id, {}) %}
             {% set analysis = manifest.analysis.get(section.id, {}) %}
-            {% set capture_status = item.status or 'not_answered' %}
+            {% set capture_status = item.status or 'not_set' %}
             {% set evidence_status = analysis.status or 'not_run' %}
             {% set approval_status = 'approved' if item.approved else 'pending' %}
-            {% set should_open = section.required and capture_status in ['partial', 'not_answered', 'needs_follow_up'] %}
-            <details class="section-row autosave-section" data-section-id="{{ section.id }}" data-save-url="/runs/{{ manifest.run_id }}/section/{{ section.id }}" {% if should_open %}open{% endif %}>
+            {% set should_open = section.required and capture_status in ['not_set', 'partial', 'not_answered', 'needs_follow_up'] %}
+            <details id="section-{{ section.id }}" class="section-row autosave-section" data-section-id="{{ section.id }}" data-save-url="/runs/{{ manifest.run_id }}/section/{{ section.id }}" {% if should_open %}open{% endif %}>
               <summary>
                 <span>
                   <strong>{{ loop.index }}. {{ section.label }}</strong>
-                  <em class="status-chip capture {{ capture_status }}" data-role="capture-chip">{{ capture_statuses.get(capture_status, 'Not answered') }}</em>
+                  <em class="status-chip capture {{ capture_status }}" data-role="capture-chip">{{ capture_statuses.get(capture_status, 'Not selected') }}</em>
                   <em class="status-chip approval {{ approval_status }}" data-role="approval-chip">{{ approval_status }}</em>
                   <em class="required">SOP gate</em>
                 </span>
@@ -203,7 +203,11 @@
                     </ul>
                   </details>
                   <details class="snippet-list">
-                    <summary>Review snippets</summary>
+                    <summary>
+                      <span>Review snippets</span>
+                      <span class="snippet-summary">{{ analysis.summary or "Transcript analysis has not run yet." }}</span>
+                    </summary>
+                    <p class="evidence-summary">{{ analysis.recommendation or "Attach a transcript and capture the section before SOP handoff." }}</p>
                     {% if analysis.evidence %}
                       {% for evidence in analysis.evidence %}
                         <blockquote>{{ evidence.snippet }}</blockquote>
@@ -214,13 +218,17 @@
                   </details>
                 </div>
                 <div class="section-controls">
-                  <label>Status
-                    <select class="autosave-input" data-field="status">
-                      {% for value, label in capture_statuses.items() %}
-                        <option value="{{ value }}" {% if capture_status == value %}selected{% endif %}>{{ label }}</option>
-                      {% endfor %}
-                    </select>
-                  </label>
+                  <fieldset class="status-radios">
+                    <legend>Status</legend>
+                    {% for value, label in capture_statuses.items() %}
+                      {% if value != 'not_set' %}
+                        <label>
+                          <input class="autosave-input" data-field="status" type="radio" name="status_{{ section.id }}" value="{{ value }}" {% if capture_status == value %}checked{% endif %}>
+                          <span>{{ label }}</span>
+                        </label>
+                      {% endif %}
+                    {% endfor %}
+                  </fieldset>
                   <label>Facts, assumptions, gaps, or follow-ups
                     <textarea class="autosave-input" data-field="notes" placeholder="Facts, assumptions, gaps, or follow-ups">{{ item.notes }}</textarea>
                   </label>
@@ -228,11 +236,6 @@
                     <input class="autosave-input" data-field="approved" type="checkbox" {% if item.approved %}checked{% endif %}>
                     <span>Approve this section for SOP handoff</span>
                   </label>
-                  <div class="evidence-panel">
-                    <strong>Evidence view</strong>
-                    <p class="evidence-summary">{{ analysis.summary or "Transcript analysis has not run yet." }}</p>
-                    <p>{{ analysis.recommendation or "Attach a transcript and capture the section before SOP handoff." }}</p>
-                  </div>
                   <p class="autosave-state muted" aria-live="polite">Autosaved</p>
                 </div>
               </div>
@@ -241,9 +244,15 @@
         </div>
         <div class="actions guided-actions">
           <form action="/runs/{{ manifest.run_id }}/generate-docs" method="post">
-            <button type="submit">Generate / Refresh Docs</button>
+            <button id="generate-docs-button" type="submit" {% if not readiness.generation_ready %}disabled{% endif %}>Generate / Refresh Helper Files & Workflow Handoff</button>
           </form>
-          <p class="muted compact-copy">This creates the helper files, accelerator assets, and the gated workflow handoff package.</p>
+          <p id="generate-docs-help" class="muted compact-copy">
+            {% if readiness.generation_ready %}
+              This creates the helper files, accelerator assets, and the gated workflow handoff package.
+            {% else %}
+              Complete section statuses and approvals first. Missing: {{ readiness.generation_missing[:4]|join('; ') }}{% if readiness.generation_missing|length > 4 %}; and {{ readiness.generation_missing|length - 4 }} more{% endif %}.
+            {% endif %}
+          </p>
         </div>
       </section>
 
@@ -308,8 +317,14 @@
           <div class="blockers">
             <h3>Workflow build blocked by:</h3>
             <ul>
-              {% for blocker in readiness.blockers %}
-                <li>{{ blocker }}</li>
+              {% for blocker in readiness.blocker_items %}
+                <li>
+                  {% if blocker.section_id %}
+                    <button type="button" class="blocker-link" data-jump-section="{{ blocker.section_id }}">{{ blocker.message }}</button>
+                  {% else %}
+                    <button type="button" class="blocker-link" data-jump-target="generate-docs-button">{{ blocker.message }}</button>
+                  {% endif %}
+                </li>
               {% endfor %}
             </ul>
           </div>
@@ -318,9 +333,6 @@
         {% endif %}
 
         <div class="workflow-actions">
-          <form action="/runs/{{ manifest.run_id }}/workflow-build" method="post">
-            <button type="submit">Generate / Refresh Workflow Handoff</button>
-          </form>
           {% if prompt_artifact.exists %}
             <a class="link-button" href="/runs/{{ manifest.run_id }}/artifacts/{{ prompt_key }}">Open Prompt</a>
             <a class="link-button secondary-link" href="/runs/{{ manifest.run_id }}/artifacts/{{ prompt_key }}" download>Download Prompt</a>
@@ -383,8 +395,24 @@
     if (node) node.textContent = `${value}%`;
   }
 
-  async function saveSection(section) {
-    const status = section.querySelector('[data-field="status"]').value;
+  function updateGenerateButton(readiness) {
+    const button = document.querySelector("#generate-docs-button");
+    const help = document.querySelector("#generate-docs-help");
+    if (!button || !help || !readiness) return;
+    button.disabled = !readiness.generation_ready;
+    if (readiness.generation_ready) {
+      help.textContent = "This creates the helper files, accelerator assets, and the gated workflow handoff package.";
+      return;
+    }
+    const missing = readiness.generation_missing || [];
+    const firstItems = missing.slice(0, 4).join("; ");
+    const more = missing.length > 4 ? `; and ${missing.length - 4} more` : "";
+    help.textContent = `Complete section statuses and approvals first. Missing: ${firstItems}${more}.`;
+  }
+
+  async function saveSection(section, changedField = "") {
+    const checkedStatus = section.querySelector('[data-field="status"]:checked');
+    const status = checkedStatus ? checkedStatus.value : "not_set";
     const notes = section.querySelector('[data-field="notes"]').value;
     const approved = section.querySelector('[data-field="approved"]').checked;
     const state = section.querySelector(".autosave-state");
@@ -393,7 +421,7 @@
       const response = await fetch(section.dataset.saveUrl, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({status, notes, approved})
+        body: JSON.stringify({status, notes, approved, changed_field: changedField})
       });
       if (!response.ok) throw new Error("Autosave failed");
       const payload = await response.json();
@@ -403,7 +431,12 @@
       updateMetric("capture_pct", payload.readiness.capture_pct);
       updateMetric("approval_pct", payload.readiness.approval_pct);
       updateMetric("artifact_pct", payload.readiness.artifact_pct);
-      section.open = payload.should_open;
+      updateGenerateButton(payload.readiness);
+      if (payload.auto_collapse) {
+        section.open = false;
+      } else if (changedField === "status") {
+        section.open = payload.should_open;
+      }
       if (state) state.textContent = `Saved ${new Date().toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}`;
     } catch (error) {
       if (state) state.textContent = "Could not save. Try again.";
@@ -413,10 +446,11 @@
   document.addEventListener("input", (event) => {
     const input = event.target.closest(".autosave-input");
     if (!input) return;
+    if (input.dataset.field !== "notes") return;
     const section = input.closest(".autosave-section");
     if (!section) return;
     clearTimeout(debounceTimers.get(section.dataset.sectionId));
-    debounceTimers.set(section.dataset.sectionId, setTimeout(() => saveSection(section), 600));
+    debounceTimers.set(section.dataset.sectionId, setTimeout(() => saveSection(section, input.dataset.field), 600));
   });
 
   document.addEventListener("change", (event) => {
@@ -425,7 +459,20 @@
     const section = input.closest(".autosave-section");
     if (!section) return;
     clearTimeout(debounceTimers.get(section.dataset.sectionId));
-    saveSection(section);
+    saveSection(section, input.dataset.field);
+  });
+
+  document.addEventListener("click", (event) => {
+    const blocker = event.target.closest(".blocker-link");
+    if (!blocker) return;
+    const target = blocker.dataset.jumpSection
+      ? document.querySelector(`#section-${CSS.escape(blocker.dataset.jumpSection)}`)
+      : document.querySelector(`#${CSS.escape(blocker.dataset.jumpTarget)}`);
+    if (!target) return;
+    if (target.tagName.toLowerCase() === "details") target.open = true;
+    target.scrollIntoView({behavior: "smooth", block: "center"});
+    target.classList.add("attention");
+    setTimeout(() => target.classList.remove("attention"), 1400);
   });
 
   document.addEventListener("click", async (event) => {

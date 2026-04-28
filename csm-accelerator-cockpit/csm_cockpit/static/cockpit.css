@@ -47,6 +47,12 @@ button {
   box-shadow: 0 10px 24px rgba(13, 49, 83, 0.20);
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+}
+
 button.secondary {
   background: #f2eadc;
   color: var(--navy);
@@ -91,7 +97,7 @@ textarea {
 }
 
 textarea {
-  min-height: 4.4rem;
+  min-height: 2.7rem;
   resize: vertical;
 }
 
@@ -398,6 +404,11 @@ code {
   background: #e8edf2;
 }
 
+.status-chip.not_set {
+  color: #5c6570;
+  background: #e5e7eb;
+}
+
 .status-chip.answered,
 .status-chip.approved {
   color: #fff;
@@ -528,12 +539,64 @@ code {
   gap: 9px;
 }
 
+.status-radios {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.status-radios legend {
+  flex: 0 0 100%;
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.status-radios label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  padding: 0.42rem 0.62rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.68);
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.status-radios input {
+  width: auto;
+}
+
+.status-radios label:has(input:checked) {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--navy), #16547d);
+}
+
 .question-list,
 .snippet-list {
   border: 1px dashed var(--line);
   border-radius: 16px;
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.52);
+}
+
+.snippet-list summary {
+  display: grid;
+  gap: 4px;
+}
+
+.snippet-summary {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.86rem;
 }
 
 .question-list ul {
@@ -708,6 +771,35 @@ blockquote {
   border-radius: 18px;
   background: #fff3ef;
   border: 1px solid rgba(164, 61, 61, 0.24);
+}
+
+.blockers ul {
+  display: grid;
+  gap: 8px;
+  padding-left: 0;
+  list-style: none;
+}
+
+.blocker-link {
+  display: inline;
+  padding: 0;
+  color: var(--red);
+  background: none;
+  border-radius: 0;
+  box-shadow: none;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.attention {
+  animation: attention-pulse 1.35s ease-out;
+}
+
+@keyframes attention-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(184, 111, 18, 0.55); }
+  55% { box-shadow: 0 0 0 10px rgba(184, 111, 18, 0); }
+  100% { box-shadow: 0 10px 34px rgba(21, 31, 43, 0.08); }
 }
 
 .sync-form {

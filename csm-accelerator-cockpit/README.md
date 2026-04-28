@@ -7,7 +7,7 @@ GitHub Pages hosts the landing page and downloadable ZIP. The real app runs loca
 ## Quick Start
 
 1. Download or clone this folder.
-2. Extract the ZIP into a fresh folder. The current ZIP opens as `csm-accelerator-cockpit-v4.4`.
+2. Extract the ZIP into a fresh folder. The current ZIP opens as `csm-accelerator-cockpit-v4.4.1`.
 3. Double-click `Start CSM Cockpit.bat`.
 4. Wait for the browser to open.
 5. Create a new accelerator project, attach transcript evidence, work Jon's guided sections, approve sections inline, and generate docs.
@@ -17,7 +17,7 @@ The launcher creates a private `.venv`, installs dependencies from `requirements
 
 ## What Is The Brain?
 
-V4.4 uses an explainable local rules engine for transcript coverage, not a hidden hosted AI model.
+V4.4.1 uses an explainable local rules engine for transcript coverage, not a hidden hosted AI model.
 
 - It accepts `.docx`, `.md`, and `.txt` transcripts.
 - It supports additive follow-up transcripts, building one combined evidence corpus.
@@ -49,6 +49,8 @@ V4.2 also writes an absolute canonical project root and identity hash into the g
 V4.3 added customer-facing accelerator asset drafts and `status/peer_review_status.json` so CSMs can distinguish internal build docs from reusable customer-facing content.
 
 V4.4 simplifies the CSM UI around Jon's actual discovery template: no separate Human Approval step, no standalone Artifact Dashboard, no evidence percentage card, and no manual Save Capture/Save Approvals buttons.
+
+V4.4.1 adds status radio buttons with a true untouched state, clickable blockers, a single helper-file/workflow-handoff generation button, and calmer section collapse behavior.
 
 ## Jon Process Pack
 

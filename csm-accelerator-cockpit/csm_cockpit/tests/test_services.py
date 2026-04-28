@@ -87,6 +87,18 @@ class CockpitServicesTest(unittest.TestCase):
             finally:
                 services.RUNS_DIR = original_runs_dir
 
+    def test_new_project_defaults_statuses_to_not_set(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp)
+            try:
+                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+                self.assertTrue(all(manifest["capture"][section.id]["status"] == "not_set" for section in sections))
+                self.assertTrue(all(not manifest["capture"][section.id]["approved"] for section in sections))
+            finally:
+                services.RUNS_DIR = original_runs_dir
+
     def test_follow_up_transcripts_are_additive(self) -> None:
         sections = services.JON_SECTIONS
         with tempfile.TemporaryDirectory() as tmp:
@@ -245,6 +257,7 @@ class CockpitServicesTest(unittest.TestCase):
         manifest["capture"]["business_rules"] = {"status": "answered", "notes": "Old rule notes", "approved": True}
         manifest["capture"]["output_action"] = {"status": "answered", "notes": "Old output notes", "approved": True}
         manifest["capture"]["operational_constraints"] = {"status": "partial", "notes": "Old ops notes", "approved": False}
+        manifest["capture"]["validation_trust"] = {"status": "", "notes": "Validation notes", "approved": False}
 
         migrated = services.migrate_manifest_sections(manifest, services.JON_SECTIONS)
         self.assertNotIn("scope_priorities", migrated["capture"])
@@ -254,6 +267,7 @@ class CockpitServicesTest(unittest.TestCase):
         self.assertIn("Old rule notes", migrated["capture"]["rules_logic_definitions"]["notes"])
         self.assertIn("Old output notes", migrated["capture"]["desired_outcome"]["notes"])
         self.assertIn("Old ops notes", migrated["capture"]["operational_readiness_phasing"]["notes"])
+        self.assertEqual(migrated["capture"]["validation_trust"]["status"], "not_set")
 
     def test_readiness_metrics_do_not_expose_top_level_evidence_pct(self) -> None:
         sections = services.JON_SECTIONS
@@ -263,6 +277,20 @@ class CockpitServicesTest(unittest.TestCase):
         self.assertIn("approval_pct", readiness)
         self.assertIn("artifact_pct", readiness)
         self.assertNotIn("evidence_pct", readiness)
+        self.assertFalse(readiness["generation_ready"])
+        self.assertIn("status not selected", readiness["blockers"][0])
+        self.assertTrue(readiness["blocker_items"][0]["section_id"])
+
+    def test_not_answered_is_selected_but_not_workflow_ready(self) -> None:
+        sections = services.JON_SECTIONS
+        manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+        for section in sections:
+            manifest["capture"][section.id]["status"] = "answered"
+            manifest["capture"][section.id]["approved"] = True
+        manifest["capture"]["business_problem"]["status"] = "not_answered"
+        readiness = services.calculate_readiness(manifest, sections)
+        self.assertTrue(readiness["generation_ready"])
+        self.assertIn("Business Problem: capture is Not answered.", readiness["blockers"])
 
     def test_generated_docs_use_v44_section_names(self) -> None:
         sections = services.JON_SECTIONS
@@ -331,11 +359,42 @@ class CockpitServicesTest(unittest.TestCase):
                 html = response.text
                 self.assertIn("Discovery questions", html)
                 self.assertIn("Helper files", html)
-                self.assertIn("Generate / Refresh Docs", html)
+                self.assertIn("Generate / Refresh Helper Files & Workflow Handoff", html)
+                self.assertIn('type="radio"', html)
+                self.assertIn("not_set", html)
+                self.assertIn("disabled", html)
+                self.assertIn("blocker-link", html)
+                self.assertIn("data-jump-section", html)
                 self.assertNotIn("Artifact Dashboard", html)
                 self.assertNotIn("Human Approval", html)
                 self.assertNotIn("Save Capture", html)
                 self.assertNotIn("Save Approvals", html)
+                self.assertNotIn("Generate / Refresh Workflow Handoff", html)
+            finally:
+                services.RUNS_DIR = original_runs_dir
+
+    def test_autosave_collapse_only_for_answered_status_change(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp)
+            try:
+                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+                services.save_manifest(manifest)
+                client = TestClient(app)
+                status_response = client.post(
+                    f"/runs/{manifest['run_id']}/section/business_problem",
+                    json={"status": "answered", "notes": "", "approved": False, "changed_field": "status"},
+                )
+                self.assertEqual(status_response.status_code, 200)
+                self.assertTrue(status_response.json()["auto_collapse"])
+
+                approval_response = client.post(
+                    f"/runs/{manifest['run_id']}/section/business_problem",
+                    json={"status": "answered", "notes": "", "approved": True, "changed_field": "approved"},
+                )
+                self.assertEqual(approval_response.status_code, 200)
+                self.assertFalse(approval_response.json()["auto_collapse"])
             finally:
                 services.RUNS_DIR = original_runs_dir
 
