@@ -10,10 +10,12 @@ from fastapi.templating import Jinja2Templates
 
 from .services import (
     APP_VERSION,
+    ACCELERATOR_ASSET_ARTIFACTS,
     CAPTURE_STATUSES,
     DEFAULT_TRANSCRIPT_PATH,
     DOC_ARTIFACTS,
     EVIDENCE_STATUSES,
+    PEER_REVIEW_STATUS_ARTIFACT,
     PROJECT_ROOT,
     attach_transcript_from_path,
     attach_uploaded_transcript,
@@ -41,7 +43,7 @@ from .services import (
 )
 
 
-app = FastAPI(title="CSM Accelerator Cockpit V4.3")
+app = FastAPI(title="CSM Accelerator Cockpit V4.4")
 app.mount("/static", StaticFiles(directory=static_root()), name="static")
 templates = Jinja2Templates(directory=template_root())
 
@@ -61,6 +63,14 @@ def _redirect(run_id: str | None = None, anchor: str = "") -> RedirectResponse:
     suffix = f"?run_id={run_id}" if run_id else ""
     fragment = f"#{anchor}" if anchor else ""
     return RedirectResponse(url=f"/{suffix}{fragment}", status_code=303)
+
+
+def _helper_files_created(manifest: dict[str, Any] | None) -> bool:
+    if not manifest:
+        return False
+    artifacts = manifest.get("artifacts", {})
+    helper_artifacts = [*DOC_ARTIFACTS, *ACCELERATOR_ASSET_ARTIFACTS, PEER_REVIEW_STATUS_ARTIFACT]
+    return all(artifacts.get(name, {}).get("exists") for name in helper_artifacts)
 
 
 @app.get("/")
@@ -90,6 +100,7 @@ async def home(request: Request, run_id: str | None = None):
             "evidence_statuses": EVIDENCE_STATUSES,
             "doc_artifacts": DOC_ARTIFACTS,
             "artifact_cards": artifact_cards(manifest) if manifest else [],
+            "helper_files_created": _helper_files_created(manifest),
             "process_stages": process_stages(),
             "default_transcript_path": str(DEFAULT_TRANSCRIPT_PATH),
             "default_transcript_exists": DEFAULT_TRANSCRIPT_PATH.exists(),
@@ -119,6 +130,49 @@ async def save_capture(run_id: str, request: Request):
     reanalyze_transcript_corpus(manifest, sections)
     save_manifest(manifest)
     return _redirect(run_id, "guided-call")
+
+
+@app.post("/runs/{run_id}/section/{section_id}")
+async def autosave_section(run_id: str, section_id: str, request: Request):
+    sections = _sections()
+    section_by_id = {section.id: section for section in sections}
+    section = section_by_id.get(section_id)
+    if not section:
+        raise HTTPException(status_code=404, detail=f"Section not found: {section_id}")
+
+    manifest = _manifest_or_404(run_id)
+    try:
+        payload = await request.json()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Expected JSON payload.") from exc
+
+    capture = manifest.setdefault("capture", {})
+    item = capture.setdefault(section_id, {"status": "not_answered", "notes": "", "approved": False})
+    status = str(payload.get("status", item.get("status", "not_answered")))
+    item["status"] = status if status in CAPTURE_STATUSES else "not_answered"
+    item["notes"] = str(payload.get("notes", item.get("notes", ""))).strip()
+    item["approved"] = bool(payload.get("approved", item.get("approved", False)))
+
+    reanalyze_transcript_corpus(manifest, sections)
+    save_manifest(manifest)
+    refreshed = load_manifest(run_id)
+    readiness = calculate_readiness(refreshed, sections)
+    analysis = refreshed.get("analysis", {}).get(section_id, {})
+    evidence_status = analysis.get("status", "not_run")
+    should_open = item["status"] in {"partial", "not_answered", "needs_follow_up"}
+    return {
+        "ok": True,
+        "section_id": section_id,
+        "section_label": section.label,
+        "capture_status": item["status"],
+        "capture_label": CAPTURE_STATUSES.get(item["status"], "Not answered"),
+        "approved": item["approved"],
+        "approval_label": "approved" if item["approved"] else "pending",
+        "evidence_status": evidence_status,
+        "evidence_label": EVIDENCE_STATUSES.get(evidence_status, "Not run"),
+        "readiness": readiness,
+        "should_open": should_open,
+    }
 
 
 @app.post("/runs/{run_id}/transcript")
@@ -155,7 +209,7 @@ async def save_approvals(run_id: str, request: Request):
     form = dict(await request.form())
     update_approvals_from_form(manifest, form, sections)
     save_manifest(manifest)
-    return _redirect(run_id, "human-approval")
+    return _redirect(run_id, "guided-call")
 
 
 @app.post("/runs/{run_id}/generate-docs")
@@ -164,7 +218,7 @@ async def generate_run_docs(run_id: str):
     manifest = _manifest_or_404(run_id)
     manifest = generate_docs(manifest, sections)
     save_manifest(manifest)
-    return _redirect(run_id, "artifact-dashboard")
+    return _redirect(run_id, "workflow-handoff")
 
 
 @app.post("/runs/{run_id}/workflow-build")
@@ -205,7 +259,7 @@ async def sync_docs(run_id: str, confirmation: str = Form("")):
         raise HTTPException(status_code=400, detail="Type SYNC to copy generated docs into the starter docs folder.")
     manifest = sync_generated_docs(manifest)
     save_manifest(manifest)
-    return _redirect(run_id, "artifact-dashboard")
+    return _redirect(run_id, "workflow-handoff")
 
 
 @app.post("/runs/{run_id}/delete")

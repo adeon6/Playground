@@ -14,7 +14,7 @@ from typing import Any
 from docx import Document
 
 
-APP_VERSION = "0.5.3"
+APP_VERSION = "0.5.4"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 COCKPIT_ROOT = Path(__file__).resolve().parent
@@ -117,16 +117,16 @@ ALL_ARTIFACTS = [
 
 REQUIRED_FOR_SOP_GATE = {
     "business_problem",
-    "value_realization",
     "current_process",
     "desired_outcome",
+    "value_realization",
     "business_questions",
-    "scope_priorities",
-    "source_systems",
-    "data_shape_entities",
-    "business_rules",
-    "output_action",
+    "scope",
+    "inputs_sources_ownership",
+    "rules_logic_definitions",
+    "exceptions_safe_handling",
     "validation_trust",
+    "operational_readiness_phasing",
 }
 
 UNCERTAINTY_TERMS = [
@@ -149,6 +149,7 @@ class Section:
     id: str
     label: str
     prompt: str
+    questions: list[str]
     capture_fields: list[str]
     keywords: list[str]
     required: bool = True
@@ -157,26 +158,69 @@ class Section:
 
 JON_SECTIONS = [
     Section(
-        "opening",
-        "Opening",
-        "Frame the call, confirm the intended use case, and set the expectation that gaps are allowed.",
-        ["Customer / engagement", "Business owner", "CSM / consultant", "Discovery purpose"],
-        ["agenda", "today", "purpose", "objective", "goal", "business owner", "stakeholder"],
-        required=False,
-        gate_reason="Context only.",
-    ),
-    Section(
         "business_problem",
         "Business Problem",
         "Capture the pain, business consequence, affected users, and why solving it matters now.",
+        [
+            "What problem are you trying to solve?",
+            "What is slow, manual, inconsistent, risky, or hard to trust today?",
+            "What happens when this problem is not solved well?",
+            "Who feels the pain most directly?",
+            "Are you trying to improve visibility, speed, quality, prioritisation, decision-making, or something else?",
+        ],
         ["Core problem", "Business impact", "Affected teams", "Why now", "Cost of current state"],
         ["problem", "pain", "challenge", "manual", "slow", "risk", "impact", "cost", "inconsistent", "trust"],
     ),
     Section(
+        "current_process",
+        "Current Process",
+        "Describe the current-state process, handoffs, systems, spreadsheets, and known friction.",
+        [
+            "How is this handled today?",
+            "What are the main steps from input to outcome?",
+            "Which systems, files, reports, or teams are involved?",
+            "Where do manual work, spreadsheets, emails, or handoffs happen?",
+            "Which steps are most painful or fragile?",
+            "What makes the current output difficult to trust or use?",
+        ],
+        ["Current process", "Systems involved", "Manual steps", "Handoffs", "Bottlenecks"],
+        ["current process", "today", "as is", "manual steps", "spreadsheet", "handoff", "workflow", "process"],
+    ),
+    Section(
+        "desired_outcome",
+        "Desired Outcome",
+        "Clarify what first useful output should exist and what business decision or action it enables.",
+        [
+            "If we gave you a useful first version quickly, what would it produce?",
+            "What outputs would be most valuable first?",
+            "Who would use those outputs?",
+            "What action or decision should those outputs support?",
+            "What does success look like for the first slice?",
+            "What can wait until later?",
+        ],
+        ["Target output", "Consumer", "Decision / action", "First-slice success", "Deferred items"],
+        ["output", "deliverable", "dashboard", "report", "app", "action", "decision", "success", "first version"],
+    ),
+    Section(
         "value_realization",
-        "Value Realization",
+        "Value Realisation",
         "Capture how the customer will recognise value, measure improvement, and justify the accelerator.",
-        ["Value driver", "Baseline", "Target benefit", "Measurement method", "Stakeholder value story"],
+        [
+            "What business value should this first slice create if it works well?",
+            "Where is the value likely to show up first: time saved, faster decisions, reduced risk, improved consistency, better visibility, or greater trust?",
+            "Are there any quantitative signals we can capture now, such as effort, turnaround time, backlog, volume, or error rate?",
+            "If the value is not yet measurable, what qualitative improvement would still matter?",
+            "What would make stakeholders say this is worth continuing or expanding?",
+            "What value assumptions still need to be validated later?",
+        ],
+        [
+            "Current pain or business impact",
+            "Workflow-enabled operational change",
+            "Quantitative value signals",
+            "Qualitative value signals",
+            "Trust / adoption signals",
+            "Value assumptions / unknowns to validate later",
+        ],
         [
             "value",
             "value realization",
@@ -202,76 +246,111 @@ JON_SECTIONS = [
         ],
     ),
     Section(
-        "current_process",
-        "Current Process",
-        "Describe the current-state process, handoffs, systems, spreadsheets, and known friction.",
-        ["Current process", "Systems involved", "Manual steps", "Handoffs", "Bottlenecks"],
-        ["current process", "today", "as is", "manual steps", "spreadsheet", "handoff", "workflow", "process"],
-    ),
-    Section(
-        "desired_outcome",
-        "Desired Outcome",
-        "Clarify what first useful output should exist and what business decision or action it enables.",
-        ["Target output", "Consumer", "Decision / action", "First-slice success", "Deferred items"],
-        ["output", "deliverable", "dashboard", "report", "app", "action", "decision", "success", "first version"],
-    ),
-    Section(
         "business_questions",
         "Business Questions",
         "List the questions the accelerator must answer and how users decide what to do next.",
+        [
+            "What questions do you need this solution to answer?",
+            "What should someone be able to decide once they see the results?",
+            "Which cases should be prioritised?",
+            "Which cases should be flagged for review?",
+            "What patterns, exceptions, or risks matter most?",
+        ],
         ["Core questions", "Decision points", "Prioritisation", "Review cases", "Business significance"],
         ["question", "decide", "prioritize", "prioritise", "rank", "exception", "review", "what should", "which cases"],
     ),
     Section(
-        "scope_priorities",
-        "Scope / Priorities",
+        "scope",
+        "Scope",
         "Separate the first slice from explicit exclusions, pilot boundaries, and later phases.",
-        ["In-scope", "Out-of-scope", "Pilot boundary", "Phase 1 priority", "Later phases"],
+        [
+            "What is in scope for the first slice?",
+            "What is out of scope for now?",
+            "Are there specific business units, regions, products, customers, channels, or process steps to include or exclude?",
+            "Is there a preferred pilot boundary?",
+            "Are we proving feasibility, value, or both?",
+        ],
+        ["In-scope entities / domains", "Out-of-scope areas", "Pilot boundary", "Phase 1 intent", "Explicit exclusions"],
         ["scope", "in scope", "out of scope", "pilot", "phase", "priority", "region", "business unit", "product"],
     ),
     Section(
-        "source_systems",
-        "Source Systems",
+        "inputs_sources_ownership",
+        "Inputs, Sources, And Ownership",
         "Identify source systems, extract owners, refresh cadence, access constraints, and package-safe inputs.",
-        ["Systems", "Input files / tables", "Owners", "Refresh cadence", "Access constraints"],
-        ["source", "system", "input", "file", "table", "extract", "owner", "refresh", "cadence", "access"],
+        [
+            "What information is needed to answer these questions?",
+            "Where does that information live today?",
+            "Which systems, files, owners, or teams provide it?",
+            "What do we know about the source structure already?",
+            "What still needs to be confirmed before build?",
+            "Are there known quality, access, or timing concerns?",
+        ],
+        [
+            "Required inputs",
+            "Source systems / files",
+            "Data owners / SMEs",
+            "Known structure and availability",
+            "Unknowns requiring discovery",
+            "Quality / access risks",
+        ],
+        ["source", "system", "input", "file", "table", "extract", "owner", "refresh", "cadence", "access", "field", "column", "entity", "grain", "join", "key", "quality"],
     ),
     Section(
-        "data_shape_entities",
-        "Data Shape / Entities",
-        "Capture grain, entities, fields, joins, sample rows, and data-quality constraints.",
-        ["Grain", "Entities", "Key fields", "Join keys", "Quality constraints", "Sample row expectations"],
-        ["data", "field", "column", "entity", "grain", "row", "join", "key", "quality", "sample"],
-    ),
-    Section(
-        "business_rules",
-        "Business Rules",
+        "rules_logic_definitions",
+        "Rules, Logic, And Definitions",
         "Document definitions, calculations, thresholds, filters, joins, and exception-handling rules.",
-        ["Definitions", "Rules / logic", "Calculations", "Thresholds", "Filters", "Exception rules"],
+        [
+            "What business rules are already trusted?",
+            "Which metrics, classifications, or thresholds matter?",
+            "How do you currently define a good, bad, at-risk, or priority case?",
+            "Are there rules for inclusion, exclusion, or segmentation?",
+            "Which edge cases need special treatment?",
+            "What assumptions are acceptable, and which require confirmation?",
+        ],
+        ["Trusted rules", "Important definitions", "Thresholds / classifications", "Inclusion / exclusion rules", "Edge cases", "Areas where logic is still uncertain"],
         ["rule", "logic", "definition", "threshold", "join", "filter", "criteria", "calculation", "formula"],
     ),
     Section(
-        "output_action",
-        "Output / Action",
-        "Define the generated outputs, action lists, review queues, and how users will consume them.",
-        ["Outputs", "Action list", "Dashboard / workbook", "Review queue", "Delivery format"],
-        ["output", "action list", "dashboard", "workbook", "report", "review queue", "publish", "export"],
+        "exceptions_safe_handling",
+        "Exceptions And Safe Handling",
+        "Capture how missing, inconsistent, late, invalid, or risky data should be handled safely.",
+        [
+            "What should happen when data is missing, inconsistent, late, or invalid?",
+            "What failure cases do you already expect?",
+            "Should questionable records be excluded, flagged, defaulted, or sent for review?",
+            "What outcomes would create risk if handled incorrectly?",
+        ],
+        ["Expected failure modes", "Safe handling rules", "Review / escalation paths", "Risk-sensitive cases"],
+        ["exception", "missing", "inconsistent", "late", "invalid", "failure", "exclude", "flag", "default", "review", "risk", "safe"],
     ),
     Section(
         "validation_trust",
-        "Validation / Trust",
+        "Validation And Trust",
         "Define how outputs are reconciled, who validates them, and what acceptance checks prove trust.",
-        ["Validation method", "Review owner", "Reconciliation source", "Acceptance checks", "Sign-off"],
-        ["validate", "validation", "reconcile", "check", "test", "trust", "review", "sign-off", "compare"],
+        [
+            "What would make you trust the first slice?",
+            "How would you validate whether it is working?",
+            "What should it reconcile against?",
+            "What should be explainable to the business?",
+            "What would count as failure?",
+            "Do different audiences need different outputs from the same logic?",
+        ],
+        ["Validation criteria", "Reconciliation targets", "Trust signals", "Explainability needs", "Failure conditions", "Audience-specific output needs"],
+        ["validate", "validation", "reconcile", "check", "test", "trust", "review", "sign-off", "compare", "explainable", "failure"],
     ),
     Section(
-        "operational_constraints",
-        "Operational Constraints",
-        "Capture cadence, ownership, deployment path, security, handover, and support expectations.",
-        ["Run cadence", "Operating owner", "Deployment path", "Security / access", "Support expectations"],
-        ["operational", "schedule", "refresh", "run", "owner", "handover", "deploy", "production", "support"],
-        required=False,
-        gate_reason="Supports implementation planning after the SOP is usable.",
+        "operational_readiness_phasing",
+        "Operational Readiness And Phasing",
+        "Capture what is needed for short-term usefulness versus later productionisation.",
+        [
+            "What needs to be true for this to be useful in the short term?",
+            "What can be manual in phase 1?",
+            "What needs to be productionised later?",
+            "Are there scheduling, alerting, write-back, governance, or access requirements that should be deferred?",
+            "What is the smallest slice that would still prove the approach?",
+        ],
+        ["Immediate needs", "Deferred operational requirements", "Phase 1 vs later-state expectations", "Minimum viable first slice"],
+        ["operational", "readiness", "schedule", "refresh", "run", "owner", "handover", "deploy", "production", "support", "phase", "manual", "governance", "access"],
     ),
 ]
 
@@ -571,6 +650,55 @@ def _ensure_project_identity(manifest: dict[str, Any], project_dir: Path | None 
     return manifest
 
 
+SECTION_KEY_MIGRATIONS = {
+    "scope_priorities": "scope",
+    "source_systems": "inputs_sources_ownership",
+    "data_shape_entities": "inputs_sources_ownership",
+    "business_rules": "rules_logic_definitions",
+    "output_action": "desired_outcome",
+    "operational_constraints": "operational_readiness_phasing",
+}
+
+
+def _merge_capture_item(existing: dict[str, Any], incoming: dict[str, Any], source_label: str) -> dict[str, Any]:
+    merged = dict(existing)
+    if not merged.get("status") or merged.get("status") == "not_answered":
+        merged["status"] = incoming.get("status", merged.get("status", "not_answered"))
+    existing_notes = str(merged.get("notes", "")).strip()
+    incoming_notes = str(incoming.get("notes", "")).strip()
+    if incoming_notes and incoming_notes not in existing_notes:
+        merged["notes"] = f"{existing_notes}\n\nMigrated from {source_label}: {incoming_notes}".strip()
+    else:
+        merged["notes"] = existing_notes
+    merged["approved"] = bool(merged.get("approved") or incoming.get("approved"))
+    return merged
+
+
+def migrate_manifest_sections(manifest: dict[str, Any], sections: list[Section] | None = None) -> dict[str, Any]:
+    sections = sections or JON_SECTIONS
+    valid_ids = {section.id for section in sections}
+    capture = manifest.setdefault("capture", {})
+    for section in sections:
+        capture.setdefault(section.id, {"status": "not_answered", "notes": "", "approved": False})
+    for old_key, new_key in SECTION_KEY_MIGRATIONS.items():
+        if old_key in capture:
+            capture[new_key] = _merge_capture_item(capture.get(new_key, {}), capture[old_key], old_key)
+            capture.pop(old_key, None)
+    for key in list(capture.keys()):
+        if key not in valid_ids:
+            capture.pop(key, None)
+
+    analysis = manifest.setdefault("analysis", {})
+    for old_key, new_key in SECTION_KEY_MIGRATIONS.items():
+        if old_key in analysis and new_key not in analysis:
+            analysis[new_key] = analysis[old_key]
+        analysis.pop(old_key, None)
+    for key in list(analysis.keys()):
+        if key not in valid_ids:
+            analysis.pop(key, None)
+    return manifest
+
+
 def new_manifest(customer_name: str, project_name: str, csm_name: str, sections: list[Section]) -> dict[str, Any]:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     base = slugify(customer_name or project_name or "customer")
@@ -647,6 +775,7 @@ def new_manifest(customer_name: str, project_name: str, csm_name: str, sections:
 def _refresh_artifact_records(manifest: dict[str, Any]) -> dict[str, Any]:
     project_dir = run_dir(manifest["run_id"])
     _ensure_project_identity(manifest, project_dir)
+    migrate_manifest_sections(manifest)
     records = manifest.setdefault("artifacts", {})
     for artifact in ALL_ARTIFACTS:
         existing = records.get(artifact, {})
@@ -663,6 +792,7 @@ def save_manifest(manifest: dict[str, Any]) -> None:
     project_dir = run_dir(manifest["run_id"])
     ensure_project_structure(project_dir)
     _ensure_project_identity(manifest, project_dir)
+    migrate_manifest_sections(manifest)
     manifest["updated_at"] = utc_now()
     _refresh_artifact_records(manifest)
     path = manifest_path(manifest["run_id"])
@@ -673,6 +803,7 @@ def save_manifest(manifest: dict[str, Any]) -> None:
 def load_manifest(run_id: str) -> dict[str, Any]:
     manifest = json.loads(manifest_path(run_id).read_text(encoding="utf-8"))
     _ensure_project_identity(manifest)
+    migrate_manifest_sections(manifest)
     _transcript_records(manifest)
     return _refresh_artifact_records(manifest)
 
@@ -690,6 +821,7 @@ def list_manifests() -> list[dict[str, Any]]:
                 if manifest.get("run_id") in seen:
                     continue
                 _ensure_project_identity(manifest)
+                migrate_manifest_sections(manifest)
                 _transcript_records(manifest)
                 manifests.append(_refresh_artifact_records(manifest))
                 seen.add(manifest.get("run_id", ""))
@@ -907,10 +1039,9 @@ def calculate_readiness(manifest: dict[str, Any], sections: list[Section]) -> di
         return round((sum(values) / len(values)) * 100) if values else 0
 
     capture_pct = avg([capture_weights.get(capture.get(section.id, {}).get("status", "not_answered"), 0) for section in required_sections])
-    evidence_pct = avg([evidence_weights.get(analysis.get(section.id, {}).get("status", "not_run"), 0) for section in required_sections])
     approval_pct = avg([1.0 if capture.get(section.id, {}).get("approved") else 0.0 for section in required_sections])
     doc_pct = avg([1.0 if manifest.get("artifacts", {}).get(name, {}).get("exists") else 0.0 for name in DOC_ARTIFACTS])
-    overall_pct = round(capture_pct * 0.35 + evidence_pct * 0.25 + approval_pct * 0.25 + doc_pct * 0.15)
+    overall_pct = round(capture_pct * 0.45 + approval_pct * 0.40 + doc_pct * 0.15)
 
     blockers: list[str] = []
     for section in required_sections:
@@ -930,7 +1061,6 @@ def calculate_readiness(manifest: dict[str, Any], sections: list[Section]) -> di
     sop_exists = manifest.get("artifacts", {}).get("03_accelerator_sop.md", {}).get("exists", False)
     return {
         "capture_pct": capture_pct,
-        "evidence_pct": evidence_pct,
         "approval_pct": approval_pct,
         "artifact_pct": doc_pct,
         "overall_pct": overall_pct,
@@ -1012,13 +1142,16 @@ def _missing_asset_inputs(manifest: dict[str, Any]) -> list[str]:
     missing = []
     required = {
         "business_problem": "Business problem",
-        "value_realization": "Value realization",
+        "current_process": "Current process",
         "desired_outcome": "Desired outcome",
-        "source_systems": "Source systems",
-        "data_shape_entities": "Data shape/entities",
-        "business_rules": "Business rules",
-        "output_action": "Output/action",
+        "value_realization": "Value realisation",
+        "business_questions": "Business questions",
+        "scope": "Scope",
+        "inputs_sources_ownership": "Inputs, sources, and ownership",
+        "rules_logic_definitions": "Rules, logic, and definitions",
+        "exceptions_safe_handling": "Exceptions and safe handling",
         "validation_trust": "Validation/trust",
+        "operational_readiness_phasing": "Operational readiness and phasing",
     }
     for section_id, label in required.items():
         item = manifest.get("capture", {}).get(section_id, {})
@@ -1040,13 +1173,12 @@ def _asset_content_by_name(manifest: dict[str, Any], common_header: str) -> dict
     current_process = _capture_note(manifest, "current_process", "- Placeholder: current process requires confirmation.")
     desired_outcome = _capture_note(manifest, "desired_outcome", "- Placeholder: desired outcome requires confirmation.")
     business_questions = _capture_note(manifest, "business_questions", "- Placeholder: business questions require confirmation.")
-    scope_priorities = _capture_note(manifest, "scope_priorities", "- Placeholder: first-slice scope and exclusions require confirmation.")
-    source_systems = _capture_note(manifest, "source_systems", "- Placeholder: source systems and input ownership require confirmation.")
-    data_shape = _capture_note(manifest, "data_shape_entities", "- Placeholder: grain, entities, keys, and expected fields require confirmation.")
-    business_rules = _capture_note(manifest, "business_rules", "- Placeholder: business rules, thresholds, and exceptions require confirmation.")
-    output_action = _capture_note(manifest, "output_action", "- Placeholder: outputs, consumers, and action path require confirmation.")
+    scope = _capture_note(manifest, "scope", "- Placeholder: first-slice scope and exclusions require confirmation.")
+    inputs_sources = _capture_note(manifest, "inputs_sources_ownership", "- Placeholder: inputs, sources, ownership, known structure, and quality/access risks require confirmation.")
+    rules_logic = _capture_note(manifest, "rules_logic_definitions", "- Placeholder: trusted rules, definitions, thresholds, and edge cases require confirmation.")
+    exceptions_safe_handling = _capture_note(manifest, "exceptions_safe_handling", "- Placeholder: safe handling for missing, inconsistent, late, invalid, or risky records requires confirmation.")
     validation_trust = _capture_note(manifest, "validation_trust", "- Placeholder: validation method and sign-off owner require confirmation.")
-    operational_constraints = _capture_note(manifest, "operational_constraints", "- Placeholder: operational constraints and deployment expectations require confirmation.")
+    operational_readiness = _capture_note(manifest, "operational_readiness_phasing", "- Placeholder: operational readiness and phasing expectations require confirmation.")
     asset_gaps = _asset_gap_lines(manifest)
 
     value_statement = [
@@ -1058,9 +1190,9 @@ def _asset_content_by_name(manifest: dict[str, Any], common_header: str) -> dict
         "\n\n## Value Hypothesis\n\n",
         value_realization,
         "\n\n## Baseline And Target\n\n",
-        "- Baseline: captured in the Value Realization notes, or still TBD.\n",
-        "- Target KPI: captured in the Value Realization notes, or still TBD.\n",
-        "- Measurement method: captured in the Value Realization notes, or still TBD.\n\n",
+        "- Baseline: captured in the Value Realisation notes, or still TBD.\n",
+        "- Target KPI: captured in the Value Realisation notes, or still TBD.\n",
+        "- Measurement method: captured in the Value Realisation notes, or still TBD.\n\n",
         "## Qualitative Value\n\n",
         desired_outcome,
         "\n\n## Assumptions And Gaps\n\n",
@@ -1083,14 +1215,14 @@ def _asset_content_by_name(manifest: dict[str, Any], common_header: str) -> dict
         "\n\n## Business Questions\n\n",
         business_questions,
         "\n\n## Input Data\n\n",
-        source_systems,
+        inputs_sources,
         "\n\n## Workflow Concept\n\n",
         "- Ingest the approved source extracts.\n",
         "- Normalize them into reusable accelerator entities.\n",
         "- Apply the captured business rules and validation checks.\n",
         "- Publish action-ready outputs for the intended users.\n\n",
         "## Outputs And Actions\n\n",
-        output_action,
+        desired_outcome,
         "\n\n## Expected Value\n\n",
         value_realization,
         "\n\n## Open Gaps\n\n",
@@ -1106,7 +1238,7 @@ def _asset_content_by_name(manifest: dict[str, Any], common_header: str) -> dict
         "\n\n## Solution Approach\n\n",
         desired_outcome,
         "\n\n",
-        output_action,
+        rules_logic,
         "\n\n## Expected Outcome\n\n",
         value_realization,
         "\n\n## Implementation Evidence To Add Later\n\n",
@@ -1115,7 +1247,7 @@ def _asset_content_by_name(manifest: dict[str, Any], common_header: str) -> dict
         "- Customer validation quote: TBD.\n",
         "- Reusable accelerator asset location: TBD.\n\n",
         "## Reuse Notes\n\n",
-        scope_priorities,
+        scope,
         "\n",
     ]
 
@@ -1129,9 +1261,9 @@ def _asset_content_by_name(manifest: dict[str, Any], common_header: str) -> dict
         "- Approved first-slice scope.\n",
         "- Sample-safe input extracts or synthetic equivalents.\n\n",
         "## Input Contract\n\n",
-        source_systems,
+        inputs_sources,
         "\n\n",
-        data_shape,
+        exceptions_safe_handling,
         "\n\n## Modular Workflow Architecture\n\n",
         "- Source contract and profiling.\n",
         "- Neutral schema normalization.\n",
@@ -1160,11 +1292,11 @@ def _asset_content_by_name(manifest: dict[str, Any], common_header: str) -> dict
         "- Sample or synthetic inputs.\n",
         "- Workflow output and validation expectations.\n\n",
         "## Configuration Choices\n\n",
-        scope_priorities,
+        scope,
         "\n\n## Sample Data Expectations\n\n",
-        source_systems,
+        inputs_sources,
         "\n\n",
-        data_shape,
+        exceptions_safe_handling,
         "\n\n## Validation Plan\n\n",
         validation_trust,
         "\n\n## Adaptation Notes\n\n",
@@ -1179,22 +1311,22 @@ def _asset_content_by_name(manifest: dict[str, Any], common_header: str) -> dict
         common_header,
         "## Accelerator 201 - Implementation Note\n\n",
         "## Source Context\n\n",
-        source_systems,
+        inputs_sources,
         "\n\n## Field And Entity Mapping\n\n",
-        data_shape,
+        inputs_sources,
         "\n\n## Module-Level Build Logic\n\n",
         "- Input module: validate source contract, required fields, and grain.\n",
         "- Normalization module: map customer-shaped inputs into reusable accelerator entities.\n",
         "- Rules module: apply approved definitions, thresholds, and exception logic.\n",
         "- Output module: publish action, summary, and governance views.\n\n",
         "## Business Rules\n\n",
-        business_rules,
+        rules_logic,
         "\n\n## Outputs\n\n",
-        output_action,
+        desired_outcome,
         "\n\n## Governance And Monitoring\n\n",
         validation_trust,
         "\n\n",
-        operational_constraints,
+        operational_readiness,
         "\n\n## System-Specific Assumptions\n\n",
         asset_gaps,
     ]
@@ -1429,7 +1561,7 @@ def _write_peer_review_status(manifest: dict[str, Any], readiness: dict[str, Any
         "ready_for_peer_review": state in {"ready_for_peer_review", "reviewed", "published"},
         "notes": "Customer-facing accelerator assets are generated as Markdown drafts for CSM/Jon review.",
         "blockers": [] if state != "draft" else [
-            "SOP gate must be ready and all V4.3 accelerator assets must exist before peer review."
+            "SOP gate must be ready and all accelerator assets must exist before peer review."
         ],
     }
     status_path.write_text(json.dumps(peer_review, indent=2), encoding="utf-8")
@@ -1785,19 +1917,21 @@ def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str
         "## Build Objective\n\n",
         "Create a first-slice accelerator workflow only after the SOP gate is satisfied. The workflow should reflect approved customer facts, explicit assumptions, and known open gaps.\n\n",
         "## Scope And Business Outcome\n\n",
-        manifest.get("capture", {}).get("scope_priorities", {}).get("notes") or "- Scope still requires CSM approval.\n",
-        "\n\n## Value Realization\n\n",
+        manifest.get("capture", {}).get("scope", {}).get("notes") or "- Scope still requires CSM approval.\n",
+        "\n\n## Value Realisation\n\n",
         manifest.get("capture", {}).get("value_realization", {}).get("notes") or "- Value driver, baseline, and measurement approach still require approval.\n",
-        "\n\n## Input Contract\n\n",
-        manifest.get("capture", {}).get("source_systems", {}).get("notes") or "- Source systems, ownership, cadence, and access constraints still require approval.\n",
-        "\n",
-        manifest.get("capture", {}).get("data_shape_entities", {}).get("notes") or "- Grain, entities, fields, and joins still require approval.\n",
-        "\n\n## Business Logic\n\n",
-        manifest.get("capture", {}).get("business_rules", {}).get("notes") or "- Business definitions, thresholds, filters, and exception rules still require approval.\n",
+        "\n\n## Inputs, Sources, And Ownership\n\n",
+        manifest.get("capture", {}).get("inputs_sources_ownership", {}).get("notes") or "- Inputs, ownership, source structure, quality, and access constraints still require approval.\n",
+        "\n\n## Rules, Logic, And Definitions\n\n",
+        manifest.get("capture", {}).get("rules_logic_definitions", {}).get("notes") or "- Business definitions, thresholds, filters, and exception rules still require approval.\n",
+        "\n\n## Exceptions And Safe Handling\n\n",
+        manifest.get("capture", {}).get("exceptions_safe_handling", {}).get("notes") or "- Safe handling for missing, invalid, late, or risky data still requires approval.\n",
         "\n\n## Outputs And Actions\n\n",
-        manifest.get("capture", {}).get("output_action", {}).get("notes") or "- Output/action design still requires approval.\n",
+        manifest.get("capture", {}).get("desired_outcome", {}).get("notes") or "- Output/action design still requires approval.\n",
         "\n\n## Validation Expectations\n\n",
         manifest.get("capture", {}).get("validation_trust", {}).get("notes") or "- Validation method and sign-off owner still require approval.\n",
+        "\n\n## Operational Readiness And Phasing\n\n",
+        manifest.get("capture", {}).get("operational_readiness_phasing", {}).get("notes") or "- Phase 1 operations and later-state production needs still require approval.\n",
         "\n\n## Workflow Logic Modules\n\n",
     ]
     for module in ["Ingest and profile inputs", "Normalize to neutral schema", "Apply rules and assumptions", "Score and prioritise outputs", "Publish action and governance views"]:
@@ -1830,7 +1964,6 @@ def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str
         "The cockpit treats `03_accelerator_sop.md` as the mandatory handoff gate before workflow generation.\n\n",
         "## Readiness Scores\n\n",
         f"- Capture readiness: {readiness['capture_pct']}%\n",
-        f"- Transcript evidence readiness: {readiness['evidence_pct']}%\n",
         f"- Human approval readiness: {readiness['approval_pct']}%\n",
         f"- Artifact readiness: {readiness['artifact_pct']}%\n",
         f"- Overall readiness: {readiness['overall_pct']}%\n\n",
@@ -1922,7 +2055,7 @@ def launch_codex_for_run(manifest: dict[str, Any], sections: list[Section]) -> d
 
 
 def open_project_subfolder(manifest: dict[str, Any], subfolder: str) -> None:
-    allowed = {"project": ".", "workflows": "workflows", "status": "status", "validation": "validation"}
+    allowed = {"project": ".", "docs": "docs", "workflows": "workflows", "status": "status", "validation": "validation"}
     relative = allowed.get(subfolder)
     if relative is None:
         raise ValueError("Unsupported folder target.")

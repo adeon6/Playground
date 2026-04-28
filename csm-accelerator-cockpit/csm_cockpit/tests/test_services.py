@@ -6,20 +6,36 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+from fastapi.testclient import TestClient
+
+from csm_cockpit.app import app
 from csm_cockpit import services
 
 
 class CockpitServicesTest(unittest.TestCase):
     def test_question_bank_has_required_sections(self) -> None:
         sections = services.load_question_bank()
-        labels = {section.label for section in sections}
-        self.assertIn("Business Problem", labels)
-        self.assertIn("Value Realization", labels)
-        self.assertIn("Source Systems", labels)
-        self.assertIn("Validation / Trust", labels)
-        self.assertNotIn("Known Unknowns", labels)
-        self.assertNotIn("Close / Playback", labels)
-        self.assertGreaterEqual(len(sections), 11)
+        labels = [section.label for section in sections]
+        self.assertEqual(
+            labels,
+            [
+                "Business Problem",
+                "Current Process",
+                "Desired Outcome",
+                "Value Realisation",
+                "Business Questions",
+                "Scope",
+                "Inputs, Sources, And Ownership",
+                "Rules, Logic, And Definitions",
+                "Exceptions And Safe Handling",
+                "Validation And Trust",
+                "Operational Readiness And Phasing",
+            ],
+        )
+        self.assertNotIn("Opening", labels)
+        self.assertNotIn("Operational Constraints", labels)
+        self.assertNotIn("Close And Playback", labels)
+        self.assertTrue(all(section.questions for section in sections))
 
     def test_transcript_analysis_marks_supported_and_missing_sections(self) -> None:
         sections = services.JON_SECTIONS
@@ -33,7 +49,7 @@ class CockpitServicesTest(unittest.TestCase):
         analysis = services.analyze_transcript_text(text, sections, capture)
         self.assertIn(analysis["current_process"]["status"], {"supported", "weak_evidence"})
         self.assertIn(analysis["desired_outcome"]["status"], {"supported", "weak_evidence"})
-        self.assertEqual(analysis["business_rules"]["status"], "missing")
+        self.assertEqual(analysis["rules_logic_definitions"]["status"], "missing")
         self.assertIn("summary", analysis["current_process"])
 
     def test_value_realization_detects_short_heading_style_transcript(self) -> None:
@@ -137,12 +153,13 @@ class CockpitServicesTest(unittest.TestCase):
                 manifest["capture"]["value_realization"]["notes"] = "Reduce exception review time from 10 hours to 5 hours and measure hours saved weekly."
                 manifest["capture"]["desired_outcome"]["notes"] = "Create a ranked action list for operations."
                 manifest["capture"]["business_questions"]["notes"] = "Which cases should operations review first?"
-                manifest["capture"]["scope_priorities"]["notes"] = "Phase 1 covers one region and active products."
-                manifest["capture"]["source_systems"]["notes"] = "Inputs are CSV exports from the planning system."
-                manifest["capture"]["data_shape_entities"]["notes"] = "Grain is store-product-day with product and store keys."
-                manifest["capture"]["business_rules"]["notes"] = "Flag high-risk exceptions above threshold."
-                manifest["capture"]["output_action"]["notes"] = "Publish action list and leadership summary."
+                manifest["capture"]["scope"]["notes"] = "Phase 1 covers one region and active products."
+                manifest["capture"]["inputs_sources_ownership"]["notes"] = "Inputs are CSV exports from the planning system at store-product-day grain."
+                manifest["capture"]["rules_logic_definitions"]["notes"] = "Flag high-risk exceptions above threshold."
+                manifest["capture"]["exceptions_safe_handling"]["notes"] = "Questionable records are flagged for review."
+                manifest["capture"]["desired_outcome"]["notes"] = "Publish action list and leadership summary."
                 manifest["capture"]["validation_trust"]["notes"] = "Validate against trusted operations report."
+                manifest["capture"]["operational_readiness_phasing"]["notes"] = "Phase 1 can be manual; scheduling is later."
                 for section in sections:
                     manifest["capture"][section.id]["status"] = "answered"
                     manifest["capture"][section.id]["approved"] = True
@@ -219,6 +236,108 @@ class CockpitServicesTest(unittest.TestCase):
             preflight = services.detect_workflow_environment()
         self.assertFalse(preflight["codex_detected"])
         self.assertIn("already-open Codex chat cannot be detected", preflight["codex_detection_note"])
+
+    def test_manifest_migration_maps_old_keys_to_v44_sections(self) -> None:
+        manifest = {"capture": {}}
+        manifest["capture"]["scope_priorities"] = {"status": "answered", "notes": "Old scope notes", "approved": True}
+        manifest["capture"]["source_systems"] = {"status": "partial", "notes": "Old source notes", "approved": False}
+        manifest["capture"]["data_shape_entities"] = {"status": "answered", "notes": "Old entity notes", "approved": True}
+        manifest["capture"]["business_rules"] = {"status": "answered", "notes": "Old rule notes", "approved": True}
+        manifest["capture"]["output_action"] = {"status": "answered", "notes": "Old output notes", "approved": True}
+        manifest["capture"]["operational_constraints"] = {"status": "partial", "notes": "Old ops notes", "approved": False}
+
+        migrated = services.migrate_manifest_sections(manifest, services.JON_SECTIONS)
+        self.assertNotIn("scope_priorities", migrated["capture"])
+        self.assertIn("Old scope notes", migrated["capture"]["scope"]["notes"])
+        self.assertIn("Old source notes", migrated["capture"]["inputs_sources_ownership"]["notes"])
+        self.assertIn("Old entity notes", migrated["capture"]["inputs_sources_ownership"]["notes"])
+        self.assertIn("Old rule notes", migrated["capture"]["rules_logic_definitions"]["notes"])
+        self.assertIn("Old output notes", migrated["capture"]["desired_outcome"]["notes"])
+        self.assertIn("Old ops notes", migrated["capture"]["operational_readiness_phasing"]["notes"])
+
+    def test_readiness_metrics_do_not_expose_top_level_evidence_pct(self) -> None:
+        sections = services.JON_SECTIONS
+        manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+        readiness = services.calculate_readiness(manifest, sections)
+        self.assertIn("capture_pct", readiness)
+        self.assertIn("approval_pct", readiness)
+        self.assertIn("artifact_pct", readiness)
+        self.assertNotIn("evidence_pct", readiness)
+
+    def test_generated_docs_use_v44_section_names(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp)
+            try:
+                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+                for section in sections:
+                    manifest["capture"][section.id]["status"] = "answered"
+                    manifest["capture"][section.id]["notes"] = f"{section.label} notes"
+                    manifest["capture"][section.id]["approved"] = True
+                manifest["analysis"] = {
+                    section.id: {"status": "supported", "score": 9, "evidence": [], "summary": "Supported.", "recommendation": "Approved."}
+                    for section in sections
+                }
+                manifest = services.generate_docs(manifest, sections)
+                sop_text = (Path(tmp) / manifest["run_id"] / "docs" / "03_accelerator_sop.md").read_text(encoding="utf-8")
+                assessment_text = (Path(tmp) / manifest["run_id"] / "docs" / "sop_architecture_assessment.md").read_text(encoding="utf-8")
+                self.assertIn("Operational Readiness And Phasing", sop_text)
+                self.assertIn("Value Realisation", sop_text)
+                self.assertNotIn("Operational Constraints", sop_text)
+                self.assertNotIn("Opening", sop_text)
+                self.assertNotIn("Transcript evidence readiness", assessment_text)
+            finally:
+                services.RUNS_DIR = original_runs_dir
+
+    def test_autosave_endpoint_updates_section_and_readiness(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp)
+            try:
+                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+                transcript = Path(tmp) / "transcript.md"
+                transcript.write_text("The business problem is manual work that causes delay and risk.", encoding="utf-8")
+                services.save_manifest(manifest)
+                manifest = services.attach_transcript_from_path(manifest, transcript, sections)
+                services.save_manifest(manifest)
+                client = TestClient(app)
+                response = client.post(
+                    f"/runs/{manifest['run_id']}/section/business_problem",
+                    json={"status": "answered", "notes": "Manual work causes delay.", "approved": True},
+                )
+                self.assertEqual(response.status_code, 200)
+                payload = response.json()
+                self.assertTrue(payload["approved"])
+                self.assertEqual(payload["capture_status"], "answered")
+                self.assertNotIn("evidence_pct", payload["readiness"])
+                updated = services.load_manifest(manifest["run_id"])
+                self.assertEqual(updated["capture"]["business_problem"]["notes"], "Manual work causes delay.")
+            finally:
+                services.RUNS_DIR = original_runs_dir
+
+    def test_ui_smoke_shows_v44_guided_flow(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp)
+            try:
+                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+                services.save_manifest(manifest)
+                client = TestClient(app)
+                response = client.get(f"/?run_id={manifest['run_id']}")
+                self.assertEqual(response.status_code, 200)
+                html = response.text
+                self.assertIn("Discovery questions", html)
+                self.assertIn("Helper files", html)
+                self.assertIn("Generate / Refresh Docs", html)
+                self.assertNotIn("Artifact Dashboard", html)
+                self.assertNotIn("Human Approval", html)
+                self.assertNotIn("Save Capture", html)
+                self.assertNotIn("Save Approvals", html)
+            finally:
+                services.RUNS_DIR = original_runs_dir
 
 
 if __name__ == "__main__":

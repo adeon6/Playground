@@ -182,6 +182,11 @@ code {
   gap: 15px;
 }
 
+.rail {
+  align-content: start;
+  align-self: start;
+}
+
 .card,
 .empty-state {
   padding: 20px;
@@ -198,6 +203,15 @@ code {
 
 .new-project-card {
   background: linear-gradient(180deg, rgba(255, 255, 252, 0.96), rgba(232, 245, 241, 0.86));
+}
+
+.compact-create summary {
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.compact-create form {
+  margin-top: 12px;
 }
 
 .process-card {
@@ -300,7 +314,7 @@ code {
 
 .mini-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(82px, 1fr));
+  grid-template-columns: repeat(3, minmax(82px, 1fr));
   gap: 10px;
 }
 
@@ -478,6 +492,10 @@ code {
   padding: 15px;
 }
 
+.merged-section-body {
+  grid-template-columns: minmax(300px, 0.9fr) minmax(340px, 1.1fr);
+}
+
 .section-meta {
   display: grid;
   align-content: start;
@@ -508,6 +526,43 @@ code {
 .section-controls {
   display: grid;
   gap: 9px;
+}
+
+.question-list,
+.snippet-list {
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.question-list ul {
+  margin-bottom: 0;
+  padding-left: 1.15rem;
+}
+
+.question-list li {
+  margin: 0.35rem 0;
+}
+
+.evidence-panel {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(234, 241, 247, 0.74);
+  border: 1px solid var(--line);
+}
+
+.evidence-panel p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.autosave-state {
+  margin: 0;
+  font-size: 0.82rem;
+  text-align: right;
 }
 
 .approval-grid,
@@ -680,7 +735,7 @@ blockquote {
 
 .preflight-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   margin: 18px 0;
 }
@@ -732,6 +787,25 @@ blockquote {
   flex-wrap: wrap;
   gap: 10px;
   margin: 12px 0;
+}
+
+.helper-path {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.helper-path code {
+  flex: 1 1 360px;
+}
+
+.guided-actions {
+  margin-top: 16px;
 }
 
 .workflow-actions form {

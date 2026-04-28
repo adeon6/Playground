@@ -7,25 +7,26 @@ GitHub Pages hosts the landing page and downloadable ZIP. The real app runs loca
 ## Quick Start
 
 1. Download or clone this folder.
-2. Extract the ZIP into a fresh folder. The current ZIP opens as `csm-accelerator-cockpit-v4.3`.
+2. Extract the ZIP into a fresh folder. The current ZIP opens as `csm-accelerator-cockpit-v4.4`.
 3. Double-click `Start CSM Cockpit.bat`.
 4. Wait for the browser to open.
-5. Create a new accelerator project, attach a transcript, save guided capture, approve sections, and generate docs.
+5. Create a new accelerator project, attach transcript evidence, work Jon's guided sections, approve sections inline, and generate docs.
 6. Double-click `Stop CSM Cockpit.bat` when finished.
 
 The launcher creates a private `.venv`, installs dependencies from `requirements.txt`, starts the local FastAPI app, and opens `http://127.0.0.1:8765`.
 
 ## What Is The Brain?
 
-V4.3 uses an explainable local rules engine for transcript coverage, not a hidden hosted AI model.
+V4.4 uses an explainable local rules engine for transcript coverage, not a hidden hosted AI model.
 
 - It accepts `.docx`, `.md`, and `.txt` transcripts.
 - It supports additive follow-up transcripts, building one combined evidence corpus.
-- It maps transcript evidence to Jon's section-level discovery model.
+- It maps transcript evidence to Jon's 11-section guided discovery template.
 - It starts with transcript review before section-level capture.
 - It summarizes why a section appears supported, weak, missing, or conflicting.
-- It includes Value Realization and removes ambiguous Known Unknowns / Close Playback sections from the CSM workflow.
-- It requires human approval before the SOP is treated as workflow-build ready.
+- It keeps capture, evidence playback, and SOP approval in one autosaving Guided Call section.
+- It uses only Jon's sections 1-11, including Value Realisation and Operational Readiness And Phasing.
+- It requires CSM approval before the SOP is treated as workflow-build ready.
 - It generates James-style accelerator assets: value statement, use-case summary, case-study skeleton, and 101/102/201 drafts.
 - It generates a project-specific Codex workflow-build prompt and helper script after the SOP gate.
 - It detects whether this machine exposes a launchable Codex command and whether Alteryx Designer/Engine is installed, but it does not contain or replace Codex and cannot detect an already-open Codex chat session.
@@ -45,7 +46,9 @@ The ZIP also bundles the local Alteryx workflow-builder toolkit and beautificati
 
 V4.2 also writes an absolute canonical project root and identity hash into the generated prompt and manifest. Codex is instructed to fail closed if the path, project ID, SOP gate, or identity hash does not match, and not to fallback-search nearby projects.
 
-V4.3 adds customer-facing accelerator asset drafts and `status/peer_review_status.json` so CSMs can distinguish internal build docs from reusable customer-facing content.
+V4.3 added customer-facing accelerator asset drafts and `status/peer_review_status.json` so CSMs can distinguish internal build docs from reusable customer-facing content.
+
+V4.4 simplifies the CSM UI around Jon's actual discovery template: no separate Human Approval step, no standalone Artifact Dashboard, no evidence percentage card, and no manual Save Capture/Save Approvals buttons.
 
 ## Jon Process Pack
 
@@ -77,7 +80,7 @@ workflows/
 validation/
 ```
 
-Generated docs are written into the project folder first. The advanced `SYNC` action is intentionally hidden behind an expandable control and only copies generated docs into `starter_docs/` when explicitly requested.
+Generated helper docs are written into the project folder first. The CSM UI shows the helper-files state inside Workflow Handoff and links directly to the generated docs folder.
 
 ## Developer Commands
 
