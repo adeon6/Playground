@@ -395,6 +395,32 @@ class CockpitServicesTest(unittest.TestCase):
             finally:
                 services.RUNS_DIR = original_runs_dir
 
+    def test_autosave_response_updates_workflow_blockers_after_all_sections_complete(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp)
+            try:
+                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+                for section in sections:
+                    manifest["capture"][section.id]["status"] = "answered"
+                    manifest["capture"][section.id]["approved"] = True
+                manifest["capture"]["operational_readiness_phasing"]["status"] = "not_set"
+                manifest["capture"]["operational_readiness_phasing"]["approved"] = False
+                services.save_manifest(manifest)
+                client = TestClient(app)
+                response = client.post(
+                    f"/runs/{manifest['run_id']}/section/operational_readiness_phasing",
+                    json={"status": "answered", "notes": "Ready for phase 1.", "approved": True, "changed_field": "approved"},
+                )
+                self.assertEqual(response.status_code, 200)
+                readiness = response.json()["readiness"]
+                self.assertTrue(readiness["generation_ready"])
+                self.assertEqual(readiness["blockers"], ["Generated document chain is incomplete."])
+                self.assertEqual(readiness["blocker_items"][0]["kind"], "documents")
+            finally:
+                services.RUNS_DIR = original_runs_dir
+
     def test_ui_smoke_shows_v44_guided_flow(self) -> None:
         sections = services.JON_SECTIONS
         with tempfile.TemporaryDirectory() as tmp:
@@ -415,6 +441,8 @@ class CockpitServicesTest(unittest.TestCase):
                 self.assertIn("disabled", html)
                 self.assertIn("blocker-link", html)
                 self.assertIn("data-jump-section", html)
+                self.assertIn("workflow-blockers-region", html)
+                self.assertIn('data-role="workflow-gate"', html)
                 self.assertNotIn("Artifact Dashboard", html)
                 self.assertNotIn("Human Approval", html)
                 self.assertNotIn("Save Capture", html)

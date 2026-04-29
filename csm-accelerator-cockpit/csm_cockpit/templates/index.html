@@ -14,9 +14,9 @@
     {% if readiness %}
       <span class="score">{{ readiness.overall_pct }}%</span>
       <span class="score-label">SOP readiness</span>
-      <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
+      <span class="gate {{ readiness.workflow_gate }}" data-role="hero-gate">{{ readiness.workflow_gate }}</span>
     {% else %}
-      <span class="score">V4.4.1</span>
+      <span class="score">V5</span>
       <span class="score-label">CSM cockpit</span>
       <span class="gate blocked">no project</span>
     {% endif %}
@@ -275,7 +275,7 @@
               opens local Codex when a launch command is available.
             </p>
           </div>
-          <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
+          <span class="gate {{ readiness.workflow_gate }}" data-role="workflow-gate">{{ readiness.workflow_gate }}</span>
         </div>
 
         <div class="preflight-grid">
@@ -314,8 +314,9 @@
           </form>
         </div>
 
+        <div id="workflow-blockers-region">
         {% if readiness.blockers %}
-          <div class="blockers">
+          <div class="blockers" data-role="workflow-blockers">
             <h3>Workflow build blocked by:</h3>
             <ul>
               {% for blocker in readiness.blocker_items %}
@@ -330,8 +331,9 @@
             </ul>
           </div>
         {% else %}
-          <p class="success">SOP gate is ready. The workflow handoff can be used by local Codex.</p>
+          <p class="success" data-role="workflow-ready-message">SOP gate is ready. The workflow handoff can be used by local Codex.</p>
         {% endif %}
+        </div>
 
         <div class="workflow-actions">
           {% if prompt_artifact.exists %}
@@ -411,6 +413,55 @@
     help.textContent = `Complete section statuses and approvals first. Missing: ${firstItems}${more}.`;
   }
 
+  function updateGateChips(readiness) {
+    if (!readiness) return;
+    document.querySelectorAll('[data-role="hero-gate"], [data-role="workflow-gate"]').forEach((chip) => {
+      chip.className = `gate ${readiness.workflow_gate}`;
+      chip.textContent = readiness.workflow_gate;
+    });
+  }
+
+  function blockerButton(blocker) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "blocker-link";
+    button.textContent = blocker.message;
+    if (blocker.section_id) {
+      button.dataset.jumpSection = blocker.section_id;
+    } else {
+      button.dataset.jumpTarget = "generate-docs-button";
+    }
+    return button;
+  }
+
+  function updateWorkflowBlockers(readiness) {
+    const region = document.querySelector("#workflow-blockers-region");
+    if (!region || !readiness) return;
+    region.replaceChildren();
+    const blockers = readiness.blocker_items || [];
+    if (!blockers.length) {
+      const ready = document.createElement("p");
+      ready.className = "success";
+      ready.dataset.role = "workflow-ready-message";
+      ready.textContent = "SOP gate is ready. The workflow handoff can be used by local Codex.";
+      region.appendChild(ready);
+      return;
+    }
+    const wrapper = document.createElement("div");
+    wrapper.className = "blockers";
+    wrapper.dataset.role = "workflow-blockers";
+    const title = document.createElement("h3");
+    title.textContent = "Workflow build blocked by:";
+    const list = document.createElement("ul");
+    blockers.forEach((blocker) => {
+      const item = document.createElement("li");
+      item.appendChild(blockerButton(blocker));
+      list.appendChild(item);
+    });
+    wrapper.append(title, list);
+    region.appendChild(wrapper);
+  }
+
   async function saveSection(section, changedField = "") {
     const checkedStatus = section.querySelector('[data-field="status"]:checked');
     const status = checkedStatus ? checkedStatus.value : "not_set";
@@ -433,6 +484,8 @@
       updateMetric("approval_pct", payload.readiness.approval_pct);
       updateMetric("artifact_pct", payload.readiness.artifact_pct);
       updateGenerateButton(payload.readiness);
+      updateGateChips(payload.readiness);
+      updateWorkflowBlockers(payload.readiness);
       if (payload.auto_collapse) {
         section.open = false;
       } else if (changedField === "status") {
