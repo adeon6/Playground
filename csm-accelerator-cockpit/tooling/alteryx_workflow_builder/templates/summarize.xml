@@ -1,5 +1,5 @@
 <Node ToolID="{{TOOL_ID}}">
-  <GuiSettings Plugin="AlteryxSpatialPluginsGui.Summarize.Summarize">
+  <GuiSettings Plugin="{{PLUGIN}}">
     <Position x="{{X}}" y="{{Y}}" />
   </GuiSettings>
   <Properties>
@@ -10,11 +10,8 @@
       {{CONFIG_XML}}
     </Configuration>
     <Annotation DisplayMode="0">
-      <Name />
-      <AnnotationText>{{LABEL}}</AnnotationText>
-      <DefaultAnnotationText>{{LABEL}}</DefaultAnnotationText>
-      <Left value="False" />
+      <Name>{{LABEL}}</Name>
     </Annotation>
   </Properties>
-  <EngineSettings EngineDll="AlteryxSpatialPluginsEngine.dll" EngineDllEntryPoint="AlteryxSummarize" />
+  <EngineSettings EngineDll="{{ENGINE_DLL}}" EngineDllEntryPoint="{{ENGINE_ENTRYPOINT}}" />
 </Node>

@@ -1,0 +1,28 @@
+{
+  "tier2_native_ops_pipeline": {
+    "required_ops": [
+      "datetime",
+      "text_to_columns",
+      "multi_row_formula",
+      "cross_tab",
+      "transpose",
+      "sample",
+      "data_cleansing",
+      "record_id",
+      "browse"
+    ],
+    "forbid_generic_fallback": true,
+    "require_semantics_ok": true,
+    "expected_plugin_by_op": {
+      "datetime": "AlteryxBasePluginsGui.DateTime.DateTime",
+      "text_to_columns": "AlteryxBasePluginsGui.TextToColumns.TextToColumns",
+      "multi_row_formula": "AlteryxBasePluginsGui.MultiRowFormula.MultiRowFormula",
+      "cross_tab": "AlteryxBasePluginsGui.CrossTab.CrossTab",
+      "transpose": "AlteryxBasePluginsGui.Transpose.Transpose",
+      "sample": "AlteryxBasePluginsGui.Sample.Sample",
+      "data_cleansing": "AlteryxBasePluginsGui.DataCleanse.DataCleanse",
+      "record_id": "AlteryxBasePluginsGui.RecordID.RecordID",
+      "browse": "AlteryxBasePluginsGui.BrowseV2.BrowseV2"
+    }
+  }
+}

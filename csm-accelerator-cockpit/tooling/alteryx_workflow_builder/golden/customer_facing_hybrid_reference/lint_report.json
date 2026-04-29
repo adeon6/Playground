@@ -1,0 +1,17 @@
+{
+  "summary": {
+    "workflows": 1,
+    "files_with_errors": 0,
+    "files_with_warnings": 0,
+    "clean_files": 1,
+    "total_errors": 0,
+    "total_warnings": 0
+  },
+  "reports": [
+    {
+      "path": "C:\\Users\\Adeon\\OneDrive\\Documents\\Playground\\alteryx_workflow_builder\\golden\\customer_facing_hybrid_reference\\10_REFERENCE_customer_facing_hybrid.yxmd",
+      "errors": [],
+      "warnings": []
+    }
+  ]
+}

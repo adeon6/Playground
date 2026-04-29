@@ -1,0 +1,20 @@
+<Node ToolID="{{TOOL_ID}}">
+  <GuiSettings Plugin="{{PLUGIN}}">
+    <Position x="{{X}}" y="{{Y}}" />
+  </GuiSettings>
+  <Properties>
+    <Configuration>
+      <GroupBy>
+        {{CROSSTAB_GROUPS}}
+      </GroupBy>
+      <HeaderField>{{CROSSTAB_HEADER_FIELD}}</HeaderField>
+      <DataField>{{CROSSTAB_DATA_FIELD}}</DataField>
+      <Method>{{CROSSTAB_METHOD}}</Method>
+      {{CONFIG_XML}}
+    </Configuration>
+    <Annotation DisplayMode="0">
+      <Name>{{LABEL}}</Name>
+    </Annotation>
+  </Properties>
+  <EngineSettings EngineDll="{{ENGINE_DLL}}" EngineDllEntryPoint="{{ENGINE_ENTRYPOINT}}" />
+</Node>

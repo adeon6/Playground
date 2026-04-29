@@ -1,0 +1,8 @@
+{
+  "fixtures": [
+    {
+      "id": "tier2_native_ops_pipeline",
+      "spec": "examples/tier2/workflow_spec_tier2.json"
+    }
+  ]
+}

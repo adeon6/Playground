@@ -1,0 +1,141 @@
+{
+  "id": "tier2_native_ops_pipeline",
+  "goal": "Exercise deterministic native tier-2 tool configuration coverage.",
+  "inputs": [
+    {
+      "name": "orders",
+      "type": "csv",
+      "path": "examples/support_sla/data/tickets.csv"
+    }
+  ],
+  "steps": [
+    {
+      "id": "input_orders",
+      "op": "csv_input",
+      "args": {
+        "path": "examples/support_sla/data/tickets.csv"
+      }
+    },
+    {
+      "id": "dt_parse_created",
+      "op": "datetime",
+      "depends_on": ["input_orders"],
+      "args": {
+        "transformations": [
+          {
+            "field": "CreatedAt",
+            "output_field": "CreatedAtParsed",
+            "operation": "ParseDateTime",
+            "input_format": "%Y-%m-%d %H:%M:%S",
+            "output_format": "%Y-%m-%d"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ttc_split_assignee",
+      "op": "text_to_columns",
+      "depends_on": ["dt_parse_created"],
+      "args": {
+        "field": "Assignee",
+        "delimiter": " ",
+        "split_to_rows": false,
+        "num_columns": 2
+      }
+    },
+    {
+      "id": "mrf_running_counter",
+      "op": "multi_row_formula",
+      "depends_on": ["ttc_split_assignee"],
+      "args": {
+        "field": "RunningTicketCount",
+        "expression": "[Row-1:RunningTicketCount] + 1",
+        "rows": 1,
+        "group_by": ["Assignee"]
+      }
+    },
+    {
+      "id": "ct_by_assignee",
+      "op": "cross_tab",
+      "depends_on": ["mrf_running_counter"],
+      "args": {
+        "group_by": ["Assignee"],
+        "header_field": "MetSLA",
+        "data_field": "TicketID",
+        "method": "Count"
+      }
+    },
+    {
+      "id": "transpose_counts",
+      "op": "transpose",
+      "depends_on": ["ct_by_assignee"],
+      "args": {
+        "key_fields": ["Assignee"],
+        "data_fields": ["0", "1"]
+      }
+    },
+    {
+      "id": "sample_preview",
+      "op": "sample",
+      "depends_on": ["transpose_counts"],
+      "args": {
+        "mode": "first_n",
+        "first_n": 25
+      }
+    },
+    {
+      "id": "clean_text_fields",
+      "op": "data_cleansing",
+      "depends_on": ["sample_preview"],
+      "args": {
+        "fields": ["Name", "Value"],
+        "trim_whitespace": true,
+        "remove_punctuation": false,
+        "modify_case": "none"
+      }
+    },
+    {
+      "id": "add_record_id",
+      "op": "record_id",
+      "depends_on": ["clean_text_fields"],
+      "args": {
+        "field_name": "RecordID",
+        "start": 1,
+        "increment": 1
+      }
+    },
+    {
+      "id": "browse_preview",
+      "op": "browse",
+      "depends_on": ["add_record_id"],
+      "args": {
+        "record_limit": 500
+      }
+    },
+    {
+      "id": "output_preview",
+      "op": "output_file",
+      "depends_on": ["browse_preview"],
+      "args": {
+        "path": "./tier2_preview.csv"
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "type": "file",
+      "format": "csv",
+      "path": "./tier2_preview.csv"
+    }
+  ],
+  "assumptions": [
+    "Example input file may not have all referenced fields; this fixture validates static compile/lint behavior only.",
+    "Tier-2 operation coverage is validated from emitted XML structure and registry mappings."
+  ],
+  "metadata": {
+    "author": "codex",
+    "version": "1.0.0",
+    "designer_profile": "2025.2",
+    "designer_version": "2025.2"
+  }
+}

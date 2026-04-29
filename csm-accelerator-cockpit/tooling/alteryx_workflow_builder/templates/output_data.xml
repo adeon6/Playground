@@ -1,10 +1,11 @@
 <Node ToolID="{{TOOL_ID}}">
-  <GuiSettings Plugin="AlteryxBasePluginsGui.DbFileOutput.DbFileOutput">
+  <GuiSettings Plugin="{{PLUGIN}}">
     <Position x="{{X}}" y="{{Y}}" />
   </GuiSettings>
   <Properties>
     <Configuration>
       <File MaxRecords="" FileFormat="0">{{OUTPUT_PATH}}</File>
+      <Connection>{{CONNECTION_STRING}}</Connection>
       <Passwords />
       <Disable>False</Disable>
       <FormatSpecificOptions>
@@ -19,14 +20,8 @@
       {{CONFIG_XML}}
     </Configuration>
     <Annotation DisplayMode="0">
-      <Name />
-      <AnnotationText>{{LABEL}}</AnnotationText>
-      <DefaultAnnotationText>{{OUTPUT_PATH}}</DefaultAnnotationText>
-      <Left value="False" />
+      <Name>{{LABEL}}</Name>
     </Annotation>
-    <Dependencies>
-      <Implicit />
-    </Dependencies>
   </Properties>
-  <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxDbFileOutput" />
+  <EngineSettings EngineDll="{{ENGINE_DLL}}" EngineDllEntryPoint="{{ENGINE_ENTRYPOINT}}" />
 </Node>

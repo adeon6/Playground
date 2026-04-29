@@ -1,0 +1,28 @@
+{
+  "version": "2026-03-06",
+  "designer_profiles": ["2025.1", "2025.2"],
+  "fragments": {
+    "csv_input": {"template": "templates/input_data.xml", "provenance": "Designer-saved DbFileInput pattern"},
+    "file_input": {"template": "templates/input_data.xml", "provenance": "Designer-saved DbFileInput pattern"},
+    "db_input": {"template": "templates/input_data.xml", "provenance": "Designer-saved DbFileInput pattern"},
+    "select": {"template": "templates/select.xml", "provenance": "Designer-saved Select pattern"},
+    "formula": {"template": "templates/formula.xml", "provenance": "Designer-saved Formula pattern"},
+    "filter": {"template": "templates/filter.xml", "provenance": "Designer-saved Filter pattern"},
+    "summarize": {"template": "templates/summarize.xml", "provenance": "Designer-saved Summarize pattern"},
+    "join": {"template": "templates/join.xml", "provenance": "Designer-saved Join pattern"},
+    "union": {"template": "templates/union.xml", "provenance": "Designer-saved Union pattern"},
+    "sort": {"template": "templates/sort.xml", "provenance": "Designer-saved Sort pattern"},
+    "unique": {"template": "templates/unique.xml", "provenance": "Designer-saved Unique pattern"},
+    "output_file": {"template": "templates/output_data.xml", "provenance": "Designer-saved DbFileOutput pattern"},
+    "output_db": {"template": "templates/output_data.xml", "provenance": "Designer-saved DbFileOutput pattern"},
+    "datetime": {"template": "templates/datetime.xml", "provenance": "Weekly Challenge + Designer examples"},
+    "text_to_columns": {"template": "templates/text_to_columns.xml", "provenance": "Weekly Challenge + Designer examples"},
+    "multi_row_formula": {"template": "templates/multi_row_formula.xml", "provenance": "Weekly Challenge + Designer examples"},
+    "cross_tab": {"template": "templates/cross_tab.xml", "provenance": "Weekly Challenge + Designer examples"},
+    "transpose": {"template": "templates/transpose.xml", "provenance": "Weekly Challenge + Designer examples"},
+    "sample": {"template": "templates/sample.xml", "provenance": "Weekly Challenge + Designer examples"},
+    "data_cleansing": {"template": "templates/data_cleansing.xml", "provenance": "Weekly Challenge + Designer examples"},
+    "record_id": {"template": "templates/record_id.xml", "provenance": "Weekly Challenge + Designer examples"},
+    "browse": {"template": "templates/browse.xml", "provenance": "Weekly Challenge + Designer examples"}
+  }
+}

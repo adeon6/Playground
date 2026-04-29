@@ -1,0 +1,40 @@
+{
+  "id": "10_customer_facing_revenue_risk_showcase",
+  "goal": "Demonstrate the merged beautification style: colored logical containers plus top banner and bottom documentation shelf.",
+  "inputs": [
+    {
+      "name": "sales_orders",
+      "path": "./data/inputs/sales_orders.csv"
+    },
+    {
+      "name": "product_master",
+      "path": "./data/inputs/product_master.csv"
+    },
+    {
+      "name": "service_targets",
+      "path": "./data/inputs/service_targets.csv"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "enriched_order_actions",
+      "path": "./data/outputs/enriched_order_actions.csv"
+    },
+    {
+      "name": "regional_priority_summary",
+      "path": "./data/outputs/regional_priority_summary.csv"
+    },
+    {
+      "name": "operations_review_queue",
+      "path": "./data/outputs/operations_review_queue.csv"
+    }
+  ],
+  "beautification_profile": "customer_facing_hybrid_v1",
+  "rules_demonstrated": [
+    "top dark title banner with purpose/outcome copy",
+    "colored contextual containers around all real tools",
+    "left-to-right lane discipline with no intentional connector crossings",
+    "bottom documentation shelf for workflow reading guide",
+    "optional side tip panel with matching documentation fill"
+  ]
+}

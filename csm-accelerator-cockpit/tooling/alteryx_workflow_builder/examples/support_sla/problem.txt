@@ -1,0 +1,1 @@
+Build a weekly SLA dashboard workflow from tickets.csv. For each assignee, calculate total ticket count, average resolution hours, and percent resolved within SLA where SLA target is <= 24 hours. Output a summary CSV.

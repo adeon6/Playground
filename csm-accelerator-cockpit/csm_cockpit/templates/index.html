@@ -97,9 +97,10 @@
       <section class="empty-state">
         <h2>Create a project, then attach transcript evidence</h2>
         <p>
-          V4.4.1 follows Jon's 11-section discovery template exactly. Once a project exists,
-          the CSM works section-by-section with autosave, evidence playback, and one
-          generate button for the helper files and workflow handoff.
+          V5 follows Jon's operating-system folder structure and 11-section discovery
+          template exactly. Once a project exists, the CSM works section-by-section with
+          autosave, advisory evidence playback, and one generate button for the helper
+          files and workflow handoff.
         </p>
       </section>
     {% else %}
@@ -123,7 +124,7 @@
           <p class="muted">
             Add the first transcript, then keep adding follow-up calls as they happen.
             The cockpit builds one combined discovery corpus and writes Jon's canonical
-            discovery file into the project docs folder.
+            discovery file into Jon's 01_discovery folder.
           </p>
           {% if manifest.transcript.analyzed_at %}
             <p class="success success-line"><span class="done-mark">Done</span> Evidence corpus analyzed: {{ manifest.transcript.source_count or manifest.transcripts|length }} source{{ '' if (manifest.transcript.source_count or manifest.transcripts|length) == 1 else 's' }}, {{ manifest.transcript.characters }} characters captured.</p>
@@ -163,8 +164,8 @@
           <span class="pill">autosave</span>
         </div>
         <p class="muted compact-copy">
-          Work only Jon's 11 template sections. Each change saves immediately, re-checks
-          transcript evidence, and keeps unresolved sections open until they are safe for SOP handoff.
+          Work only Jon's 11 template sections. Each change saves immediately. Transcript
+          evidence remains advisory; CSM status and approval are what control readiness.
         </p>
         <div class="section-table compact">
           {% for section in sections %}
@@ -269,8 +270,8 @@
           <div>
             <h2>Gated Codex Build Package</h2>
             <p class="muted compact-copy">
-              The cockpit does not contain Codex. It prepares the helper files,
-              resolves Jon's Large prompt with this project's docs, and optionally
+              The cockpit does not contain Codex. It prepares Jon's project folders,
+              resolves Jon's Large prompt with this project's files, and optionally
               opens local Codex when a launch command is available.
             </p>
           </div>
@@ -305,11 +306,11 @@
         </div>
 
         <div class="helper-path">
-          <strong>Helper folder</strong>
-          <code>{{ manifest.canonical_project_root }}\docs</code>
+          <strong>Project helper folder</strong>
+          <code>{{ manifest.canonical_project_root }}</code>
           <form action="/runs/{{ manifest.run_id }}/open-folder" method="post">
-            <input type="hidden" name="target" value="docs">
-            <button type="submit" class="secondary">Open Helper Files Folder</button>
+            <input type="hidden" name="target" value="project">
+            <button type="submit" class="secondary">Open Project Folder</button>
           </form>
         </div>
 
@@ -364,7 +365,7 @@
             <p class="muted">No launchable Codex command was found from this web app. If Codex is already open, use Open Prompt or Copy Prompt and paste it into that session manually.</p>
           {% endif %}
         {% else %}
-          <p class="muted">Resolve blockers, generate the docs, then refresh this handoff before asking Codex to build the workflow.</p>
+          <p class="muted">Resolve blockers, then generate the helper files and handoff before asking Codex to build the workflow.</p>
         {% endif %}
 
         {% if workflow.detected_artifacts %}

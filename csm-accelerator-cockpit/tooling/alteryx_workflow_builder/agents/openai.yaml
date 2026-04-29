@@ -1,0 +1,4 @@
+interface:
+  display_name: "Alteryx Workflow Builder"
+  short_description: "Generate, validate, render, and package Alteryx workflows"
+  default_prompt: "Use $alteryx-workflow-builder to build and validate this Alteryx workflow from requirements."

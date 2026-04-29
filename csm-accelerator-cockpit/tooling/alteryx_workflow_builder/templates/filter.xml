@@ -1,5 +1,7 @@
 <Node ToolID="{{TOOL_ID}}">
-  <GuiSettings Plugin="AlteryxBasePluginsGui.Filter.Filter" Position="{{X}},{{Y}}" />
+  <GuiSettings Plugin="{{PLUGIN}}">
+    <Position x="{{X}}" y="{{Y}}" />
+  </GuiSettings>
   <Properties>
     <Configuration>
       <Expression>{{CONDITION}}</Expression>
@@ -9,4 +11,5 @@
       <Name>{{LABEL}}</Name>
     </Annotation>
   </Properties>
+  <EngineSettings EngineDll="{{ENGINE_DLL}}" EngineDllEntryPoint="{{ENGINE_ENTRYPOINT}}" />
 </Node>

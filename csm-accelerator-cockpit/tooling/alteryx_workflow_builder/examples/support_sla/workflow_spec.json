@@ -1,0 +1,99 @@
+{
+  "id": "support_sla_weekly",
+  "goal": "Create weekly SLA summary by assignee from ticket events.",
+  "inputs": [
+    {
+      "name": "tickets",
+      "type": "csv",
+      "path": "examples/support_sla/data/tickets.csv"
+    }
+  ],
+  "steps": [
+    {
+      "id": "input_tickets",
+      "op": "csv_input",
+      "args": {
+        "path": "examples/support_sla/data/tickets.csv"
+      }
+    },
+    {
+      "id": "formula_resolution_hours",
+      "op": "formula",
+      "depends_on": [
+        "input_tickets"
+      ],
+      "args": {
+        "field": "ResolutionHours",
+        "expression": "ToNumber([MinutesToResolve]) / 60",
+        "type": "Double"
+      }
+    },
+    {
+      "id": "formula_sla_flag",
+      "op": "formula",
+      "depends_on": [
+        "formula_resolution_hours"
+      ],
+      "args": {
+        "field": "MetSLA",
+        "expression": "IIF([ResolutionHours] <= 24, 1, 0)",
+        "type": "Int32"
+      }
+    },
+    {
+      "id": "summarize_by_assignee",
+      "op": "summarize",
+      "depends_on": [
+        "formula_sla_flag"
+      ],
+      "args": {
+        "group_by": [
+          "Assignee"
+        ],
+        "aggregations": [
+          {
+            "field": "TicketID",
+            "action": "Count",
+            "as": "TicketCount"
+          },
+          {
+            "field": "ResolutionHours",
+            "action": "Average",
+            "as": "AvgResolutionHours"
+          },
+          {
+            "field": "MetSLA",
+            "action": "Average",
+            "as": "PctMetSLA"
+          }
+        ]
+      }
+    },
+    {
+      "id": "output_sla_csv",
+      "op": "output_file",
+      "depends_on": [
+        "summarize_by_assignee"
+      ],
+      "args": {
+        "path": "./support_sla_summary.csv"
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "type": "file",
+      "format": "csv",
+      "path": "./support_sla_summary.csv"
+    }
+  ],
+  "assumptions": [
+    "tickets.csv has columns TicketID, Assignee, MinutesToResolve.",
+    "MinutesToResolve is numeric or can be converted to numeric.",
+    "SLA threshold is 24 hours for all tickets."
+  ],
+  "metadata": {
+    "author": "codex",
+    "version": "1.0.0"
+  }
+}

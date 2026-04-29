@@ -1,0 +1,239 @@
+{
+  "schema_version": "1.0.0",
+  "default_profile": "2025.2",
+  "profiles": {
+    "2025.1": {
+      "designer_version": "2025.1"
+    },
+    "2025.2": {
+      "designer_version": "2025.2"
+    }
+  },
+  "ops": {
+    "csv_input": {
+      "plugin": "AlteryxBasePluginsGui.DbFileInput.DbFileInput",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxDbFileInput",
+      "support_state": "robust",
+      "required_args": ["path"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "file_input": {
+      "plugin": "AlteryxBasePluginsGui.DbFileInput.DbFileInput",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxDbFileInput",
+      "support_state": "robust",
+      "required_args": ["path"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "db_input": {
+      "plugin": "AlteryxBasePluginsGui.DbFileInput.DbFileInput",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxDbFileInput",
+      "support_state": "beta",
+      "required_args": ["connection"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "select": {
+      "plugin": "AlteryxBasePluginsGui.AlteryxSelect.AlteryxSelect",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxSelect",
+      "support_state": "robust",
+      "required_args": [],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": ["AlteryxBasePluginsGui.Select.Select"]
+    },
+    "cleanse": {
+      "plugin": "AlteryxBasePluginsGui.Formula.Formula",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxFormula",
+      "support_state": "beta",
+      "required_args": ["formulas"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "formula": {
+      "plugin": "AlteryxBasePluginsGui.Formula.Formula",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxFormula",
+      "support_state": "robust",
+      "required_args": ["formulas"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "filter": {
+      "plugin": "AlteryxBasePluginsGui.Filter.Filter",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxFilter",
+      "support_state": "robust",
+      "required_args": ["condition"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "join": {
+      "plugin": "AlteryxBasePluginsGui.Join.Join",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxJoin",
+      "support_state": "beta",
+      "required_args": [],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "union": {
+      "plugin": "AlteryxBasePluginsGui.Union.Union",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxUnion",
+      "support_state": "beta",
+      "required_args": [],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "summarize": {
+      "plugin": "AlteryxSpatialPluginsGui.Summarize.Summarize",
+      "engine_dll": "AlteryxSpatialPluginsEngine.dll",
+      "engine_entrypoint": "AlteryxSummarize",
+      "support_state": "robust",
+      "required_args": [],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": ["AlteryxBasePluginsGui.Summarize.Summarize"]
+    },
+    "sort": {
+      "plugin": "AlteryxBasePluginsGui.Sort.Sort",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxSort",
+      "support_state": "beta",
+      "required_args": [],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "unique": {
+      "plugin": "AlteryxBasePluginsGui.Unique.Unique",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxUnique",
+      "support_state": "beta",
+      "required_args": [],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "output_file": {
+      "plugin": "AlteryxBasePluginsGui.DbFileOutput.DbFileOutput",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxDbFileOutput",
+      "support_state": "robust",
+      "required_args": ["path"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "output_db": {
+      "plugin": "AlteryxBasePluginsGui.DbFileOutput.DbFileOutput",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxDbFileOutput",
+      "support_state": "beta",
+      "required_args": ["connection"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "macro_call": {
+      "plugin": "AlteryxGuiToolkit.ToolContainer.ToolContainer",
+      "engine_dll": "",
+      "engine_entrypoint": "",
+      "support_state": "unsupported",
+      "required_args": [],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "python_script": {
+      "plugin": "AlteryxBasePluginsGui.Python.Python",
+      "engine_dll": "",
+      "engine_entrypoint": "",
+      "support_state": "unsupported",
+      "required_args": [],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "datetime": {
+      "plugin": "AlteryxBasePluginsGui.DateTime.DateTime",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxDateTime",
+      "support_state": "robust",
+      "required_args": ["transformations"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "text_to_columns": {
+      "plugin": "AlteryxBasePluginsGui.TextToColumns.TextToColumns",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxTextToColumns",
+      "support_state": "robust",
+      "required_args": ["field", "delimiter"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "multi_row_formula": {
+      "plugin": "AlteryxBasePluginsGui.MultiRowFormula.MultiRowFormula",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxMultiRowFormula",
+      "support_state": "robust",
+      "required_args": ["field", "expression"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "cross_tab": {
+      "plugin": "AlteryxBasePluginsGui.CrossTab.CrossTab",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxCrossTab",
+      "support_state": "robust",
+      "required_args": ["group_by", "header_field", "data_field", "method"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "transpose": {
+      "plugin": "AlteryxBasePluginsGui.Transpose.Transpose",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxTranspose",
+      "support_state": "robust",
+      "required_args": ["key_fields", "data_fields"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "sample": {
+      "plugin": "AlteryxBasePluginsGui.Sample.Sample",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxSample",
+      "support_state": "robust",
+      "required_args": ["mode"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "data_cleansing": {
+      "plugin": "AlteryxBasePluginsGui.DataCleanse.DataCleanse",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxDataCleanse",
+      "support_state": "robust",
+      "required_args": ["fields"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": ["AlteryxBasePluginsGui.DataCleansing.DataCleansing"]
+    },
+    "record_id": {
+      "plugin": "AlteryxBasePluginsGui.RecordID.RecordID",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxRecordID",
+      "support_state": "robust",
+      "required_args": ["field_name"],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": []
+    },
+    "browse": {
+      "plugin": "AlteryxBasePluginsGui.BrowseV2.BrowseV2",
+      "engine_dll": "AlteryxBasePluginsEngine.dll",
+      "engine_entrypoint": "AlteryxBrowseV2",
+      "support_state": "robust",
+      "required_args": [],
+      "availability": ["2025.1", "2025.2"],
+      "plugin_aliases": ["AlteryxBasePluginsGui.Browse.Browse"]
+    }
+  }
+}

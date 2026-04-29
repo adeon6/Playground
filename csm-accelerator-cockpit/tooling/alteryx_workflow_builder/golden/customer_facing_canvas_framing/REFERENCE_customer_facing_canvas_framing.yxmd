@@ -1,0 +1,820 @@
+<?xml version="1.0"?>
+<AlteryxDocument yxmdVer="2022.1">
+  <Nodes>
+    <Node ToolID="67">
+      <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+        <Position x="56" y="54" width="887" height="84" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Text><![CDATA[Sample Alteryx Workflow
+Create a report with a thematic map
+]]></Text>
+          <Font name="Segoe UI" size="18" style="0" />
+          <TextColor name="White" />
+          <FillColor r="13" g="35" b="69" />
+          <Shape shape="0" />
+          <Justification Justification="0" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText />
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+    </Node>
+    <Node ToolID="1">
+      <GuiSettings Plugin="AlteryxBasePluginsGui.DbFileInput.DbFileInput">
+        <Position x="55" y="148" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Passwords />
+          <File OutputFileName="" FileFormat="2" SearchSubDirs="False" RecordLimit="">..\..\data\SampleData\Customers with Purchase data.DBF</File>
+          <FormatSpecificOptions>
+            <AllStrings>False</AllStrings>
+          </FormatSpecificOptions>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Customers with Purchase data.DBF</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+        <MetaInfo connection="Output">
+          <RecordInfo>
+            <Field name="CUST_ID" size="8" source="File: C:\Program Files\Alteryx\Samples\en\SampleData\Customers with Purchase data.DBF" type="String" />
+            <Field name="LATITUDE" source="File: C:\Program Files\Alteryx\Samples\en\SampleData\Customers with Purchase data.DBF" type="Double" />
+            <Field name="LONGITUDE" source="File: C:\Program Files\Alteryx\Samples\en\SampleData\Customers with Purchase data.DBF" type="Double" />
+            <Field name="purchase" source="File: C:\Program Files\Alteryx\Samples\en\SampleData\Customers with Purchase data.DBF" type="Int32" />
+            <Field name="BG_CODE" size="34" source="File: C:\Program Files\Alteryx\Samples\en\SampleData\Customers with Purchase data.DBF" type="V_String" />
+          </RecordInfo>
+        </MetaInfo>
+      </Properties>
+      <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxDbFileInput" />
+    </Node>
+    <Node ToolID="2">
+      <GuiSettings Plugin="AlteryxSpatialPluginsGui.CreatePoints.CreatePoints">
+        <Position x="168" y="148" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Fields fieldX="LONGITUDE" fieldY="LATITUDE" />
+          <Mode>Double</Mode>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText />
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <EngineSettings EngineDll="AlteryxSpatialPluginsEngine.dll" EngineDllEntryPoint="AlteryxCreatePoints" />
+    </Node>
+    <Node ToolID="5">
+      <GuiSettings Plugin="AlteryxBasePluginsGui.DbFileInput.DbFileInput">
+        <Position x="54" y="260" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Passwords />
+          <File OutputFileName="" FileFormat="15" SearchSubDirs="False" RecordLimit="">..\..\data\SampleData\Wyoming ZIPs.geo</File>
+          <FormatSpecificOptions />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Wyoming ZIPs.geo</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+        <MetaInfo connection="Output">
+          <RecordInfo>
+            <Field name="NAME" size="64" source="File: C:\Program Files\Alteryx\Samples\en\SampleData\Wyoming ZIPs.geo" type="V_String" />
+            <Field name="KEY" size="32" source="File: C:\Program Files\Alteryx\Samples\en\SampleData\Wyoming ZIPs.geo" type="V_String" />
+            <Field name="HHDCY" source="File: C:\Program Files\Alteryx\Samples\en\SampleData\Wyoming ZIPs.geo" type="Double" />
+            <Field name="POPCY" source="File: C:\Program Files\Alteryx\Samples\en\SampleData\Wyoming ZIPs.geo" type="Double" />
+            <Field name="SpatialObj" size="2147483647" source="File: C:\Program Files\Alteryx\Samples\en\SampleData\Wyoming ZIPs.geo" type="SpatialObj" />
+          </RecordInfo>
+        </MetaInfo>
+      </Properties>
+      <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxDbFileInput" />
+    </Node>
+    <Node ToolID="6">
+      <GuiSettings Plugin="AlteryxSpatialPluginsGui.SpatialMatch.SpatialMatch">
+        <Position x="281" y="148" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Target SpatialObj="Centroid" />
+          <Universe SpatialObj="SpatialObj" />
+          <Method method="Within" />
+          <SelectConfiguration>
+            <Configuration outputConnection="Matched">
+              <OrderChanged value="False" />
+              <SelectFields>
+                <SelectField field="*Unknown" selected="True" />
+              </SelectFields>
+            </Configuration>
+          </SelectConfiguration>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name>SpatialMatch (6)</Name>
+          <AnnotationText />
+          <DefaultAnnotationText>Centroid Within SpatialObj</DefaultAnnotationText>
+          <Left value="True" />
+        </Annotation>
+      </Properties>
+      <EngineSettings EngineDll="AlteryxSpatialPluginsEngine.dll" EngineDllEntryPoint="AlteryxSpatialMatch" />
+    </Node>
+    <Node ToolID="7">
+      <GuiSettings Plugin="AlteryxSpatialPluginsGui.Summarize.Summarize">
+        <Position x="393" y="148" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <SummarizeFields>
+            <SummarizeField field="KEY" action="GroupBy" rename="KEY" />
+            <SummarizeField field="SpatialObj" action="First" rename="SpatialObj_First" />
+            <SummarizeField field="purchase" action="Sum" rename="purchase_Sum" />
+          </SummarizeFields>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText />
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <EngineSettings EngineDll="AlteryxSpatialPluginsEngine.dll" EngineDllEntryPoint="AlteryxSummarize" />
+    </Node>
+    <Node ToolID="17">
+      <GuiSettings Plugin="AlteryxBasePluginsGui.Formula.Formula">
+        <Position x="505" y="148" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <FormulaFields>
+            <FormulaField field="MapLabelField" type="String" size="255" expression="&quot;$&quot;+TOSTRING([purchase_Sum], 2, 1)&#xA;" />
+          </FormulaFields>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name>Formula (17)</Name>
+          <AnnotationText />
+          <DefaultAnnotationText><![CDATA[MapLabelField="$"+TOSTRING([purchase_Sum], 2, 1)
+]]></DefaultAnnotationText>
+          <Left value="True" />
+        </Annotation>
+      </Properties>
+      <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxFormula" />
+    </Node>
+    <Node ToolID="64">
+      <GuiSettings Plugin="AlteryxSpatialPluginsGui.ReportMap.ReportMap">
+        <Position x="648" y="261" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <TemporaryFileLocationXML>C:\Users\llight\AppData\Local\Temp\Engine_5444_b965e52f714c40ae985fc8932f67e6c4_\Engine_8788_4d0b9092039d48b2ad5e03c62ea7c24f_.xml</TemporaryFileLocationXML>
+          <IsMetric value="False" />
+          <ImageWidth>8</ImageWidth>
+          <ImageHeight>6</ImageHeight>
+          <ImageResolution>1</ImageResolution>
+          <ReferenceMap />
+          <BackgroundColor>#fdfeff</BackgroundColor>
+          <DropShadow>Map</DropShadow>
+          <ScaleUnits>Miles</ScaleUnits>
+          <ExpandExtent>10</ExpandExtent>
+          <MinimumWidth>0.5</MinimumWidth>
+          <DataConnections>
+            <DataConnection name="#1">
+              <ConnectionType>IncomingConnection</ConnectionType>
+              <Connection>#1</Connection>
+              <SpatialObj />
+              <GroupField />
+              <ThemeField>purchase_Sum</ThemeField>
+              <LabelField>MapLabelField</LabelField>
+            </DataConnection>
+            <DataConnection name="#2">
+              <ConnectionType>IncomingConnection</ConnectionType>
+              <Connection>#2</Connection>
+              <SpatialObj />
+              <GroupField />
+              <ThemeField />
+              <LabelField />
+            </DataConnection>
+          </DataConnections>
+          <Layers>
+            <Layer name="Base Layers - Points" order="0">
+              <DisplayName>Base Layers - Points</DisplayName>
+              <LayerType>Placeholder</LayerType>
+            </Layer>
+            <Layer name="Base Layers - Lines" order="1">
+              <DisplayName>Base Layers - Lines</DisplayName>
+              <LayerType>Placeholder</LayerType>
+            </Layer>
+            <Layer name="3" order="2">
+              <LayerType>Polygons</LayerType>
+              <isBaseLayer value="False" />
+              <isReorderedBaseLayer value="False" />
+              <isRestlyedBaseLayer value="False" />
+              <isThemeLayer value="False" />
+              <DisplayName>Purchase Sum</DisplayName>
+              <DataConnection>#1</DataConnection>
+              <ShowInLegend value="True" />
+              <ZoomToLayer value="False" />
+              <Disable value="False" />
+              <PolygonStyle FillColor="#988576" HatchColor="#000000" HatchStyle="single" Hatched="false" Opacity="100" OutlineColor="#000000" OutlineSize="3" UseFillColor="true" />
+              <ThemeStyle ColorMethod="Ramp" EndColor="#ccffcc" ManualTiles="" NoneSpecificValuesAction="Color" NumTiles="5" SpecificValues="" StartColor="#003300" TileMethod="EqualRecords" UniqueColors="#dc143c,#6495ed,#f0e68c,#228b22,#a9a9a9,#ffa500,#ba55d3,#a0522d,#ff69b4,#4b0082,#d3d3d3,#9acd32,#00ffff,#808000,#ffb6c1" UpperCutoffIncludedExcluded="Excluded" />
+              <LabelStyle BackgroundColor="#000000" Color="#ffffff" Disabled="false" Font="Arial Bold" />
+            </Layer>
+            <Layer name="6" order="3">
+              <LayerType>Polygons</LayerType>
+              <DisplayName>#2</DisplayName>
+              <DataConnection>#2</DataConnection>
+              <ShowInLegend value="False" />
+              <ZoomToLayer value="True" />
+              <ShowLabel value="False" />
+              <PolygonStyle FillColor="#c0c0c0" Opacity="50" OutlineColor="#808080" OutlineSize="1" UseFillColor="true" />
+            </Layer>
+            <Layer name="Base Layers - Polygons" order="4">
+              <DisplayName>Base Layers - Polygons</DisplayName>
+              <LayerType>Placeholder</LayerType>
+            </Layer>
+            <Layer name="1" order="1001">
+              <DisplayName>Above a</DisplayName>
+              <DataConnection />
+              <LayerType>Polygons</LayerType>
+              <ShowLabel value="False" />
+              <isThemeLayer value="True" />
+              <ParentLayer>3</ParentLayer>
+              <ThemeBandNumber>1</ThemeBandNumber>
+            </Layer>
+            <Layer name="2" order="1002">
+              <DisplayName>b to a</DisplayName>
+              <DataConnection />
+              <LayerType>Polygons</LayerType>
+              <ShowLabel value="False" />
+              <isThemeLayer value="True" />
+              <ParentLayer>3</ParentLayer>
+              <ThemeBandNumber>2</ThemeBandNumber>
+            </Layer>
+            <Layer name="4" order="1003">
+              <DisplayName>c to b</DisplayName>
+              <DataConnection />
+              <LayerType>Polygons</LayerType>
+              <ShowLabel value="False" />
+              <isThemeLayer value="True" />
+              <ParentLayer>3</ParentLayer>
+              <ThemeBandNumber>3</ThemeBandNumber>
+            </Layer>
+            <Layer name="5" order="1004">
+              <DisplayName>d to c</DisplayName>
+              <DataConnection />
+              <LayerType>Polygons</LayerType>
+              <ShowLabel value="False" />
+              <isThemeLayer value="True" />
+              <ParentLayer>3</ParentLayer>
+              <ThemeBandNumber>4</ThemeBandNumber>
+            </Layer>
+            <Layer name="7" order="1005">
+              <DisplayName>Below d</DisplayName>
+              <DataConnection />
+              <LayerType>Polygons</LayerType>
+              <ShowLabel value="False" />
+              <isThemeLayer value="True" />
+              <ParentLayer>3</ParentLayer>
+              <ThemeBandNumber>5</ThemeBandNumber>
+            </Layer>
+          </Layers>
+          <Legend>
+            <LegendStyle BackgroundColor="#ffffff" Position="Field" UseCommaSeparators="true" />
+          </Legend>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText />
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <EngineSettings EngineDll="AlteryxSpatialPluginsEngine.dll" EngineDllEntryPoint="AlteryxReportMap" />
+    </Node>
+    <Node ToolID="74">
+      <GuiSettings Plugin="PortfolioPluginsGui.ComposerText.PortfolioComposerText">
+        <Position x="752" y="148" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Images />
+          <HeaderMode value="True" />
+          <HeaderField>Map</HeaderField>
+          <Position>Above</Position>
+          <RawMode value="False" />
+          <ValidatePCXML value="True" />
+          <Message />
+          <RichTextMode value="True" />
+          <RichTextString><![CDATA[{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Microsoft Sans Serif;}}
+\viewkind4\uc1\pard\f0\fs29 Total Customer Purchases by ZIP Code\par
+}
+]]></RichTextString>
+          <Styles>
+            <Style Name="TextStyle" />
+          </Styles>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Total Customer Purchases by ZI...</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <EngineSettings EngineDll="PortfolioPluginsEngine.dll" EngineDllEntryPoint="AlteryxPortfolioComposerTextPlugin" />
+    </Node>
+    <Node ToolID="79">
+      <GuiSettings>
+        <Position x="752" y="260" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Value name="Legend Field">Legend</Value>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText />
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <EngineSettings Macro="Legend_Splitter.yxmc" />
+    </Node>
+    <Node ToolID="81">
+      <GuiSettings Plugin="AlteryxBasePluginsGui.Formula.Formula">
+        <Position x="861" y="260" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <FormulaFields>
+            <FormulaField field="ThemeBandFrom" type="V_String" size="64" expression="IF ISNULL([ThemeBandFrom]) THEN [ThemeBandFrom] &#xA;ELSE '$' + [ThemeBandFrom] ENDIF" />
+            <FormulaField field="ThemeBandTo" type="V_String" size="64" expression="IF ISNULL([ThemeBandTo]) THEN [ThemeBandTo] &#xA;ELSE '$' + [ThemeBandTo] ENDIF" />
+            <FormulaField field="Text" type="V_WString" size="536870911" expression="IF ISNULL([ThemeBandTo]) THEN 'Above ' + [ThemeBandFrom] &#xA;ELSEIF ISNULL([ThemeBandFrom]) THEN 'Below ' + [ThemeBandTo] &#xA;ELSE [ThemeBandFrom] + ' to ' + [ThemeBandTo]&#xA;ENDIF" />
+          </FormulaFields>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>ThemeBandFrom=IF ISNULL([ThemeBandFrom]) THEN [ThemeBandFrom]...
+ThemeBandTo=IF ISNULL([ThemeBandTo]) THEN [ThemeBandTo] 
+ELSE...
+Text=IF ISNULL([ThemeBandTo]) THEN 'Above ' + [ThemeBandFrom]...</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxFormula" />
+    </Node>
+    <Node ToolID="82">
+      <GuiSettings>
+        <Position x="967" y="260" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Value name="Text Field">Text</Value>
+          <Value name="Image Field">Image</Value>
+          <Value name="Text Style Field">TextStyle</Value>
+          <Value name="Image Style Field">ImageStyle</Value>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText />
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <EngineSettings Macro="Legend_Builder.yxmc" />
+    </Node>
+    <Node ToolID="83">
+      <GuiSettings Plugin="PortfolioPluginsGui.ComposerText.PortfolioComposerText">
+        <Position x="1073" y="260" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Images />
+          <HeaderMode value="True" />
+          <HeaderField>Legend</HeaderField>
+          <Position>Above</Position>
+          <RawMode value="False" />
+          <ValidatePCXML value="True" />
+          <Message />
+          <RichTextMode value="True" />
+          <RichTextString><![CDATA[{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Microsoft Sans Serif;}}
+\viewkind4\uc1\pard\f0\fs29  \par
+Purchase Sum:\par
+}
+]]></RichTextString>
+          <Styles>
+            <Style Name="TextStyle" />
+          </Styles>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText><![CDATA[ 
+Purchase Sum:]]></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <EngineSettings EngineDll="PortfolioPluginsEngine.dll" EngineDllEntryPoint="AlteryxPortfolioComposerTextPlugin" />
+    </Node>
+    <Node ToolID="85">
+      <GuiSettings Plugin="PortfolioPluginsGui.ComposerLayout.PortfolioComposerLayout">
+        <Position x="1286" y="260" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <GroupingMode>PerRecord</GroupingMode>
+          <PreserveSourceFields value="False" />
+          <Orientation>V</Orientation>
+          <Separator>Continuous</Separator>
+          <Width>100%</Width>
+          <Height />
+          <BorderStyle Enabled="false" Color="#000000" Width="2" />
+          <SeparatorStyle Enabled="false" Color="#000000" Width="1" />
+          <Padding>0</Padding>
+          <LayoutFields orderChanged="False">
+            <Field name="Map" selected="True" Alignment="Center" />
+            <Field name="Legend" selected="True" Alignment="Center" />
+          </LayoutFields>
+          <MergeIntoTable value="False" />
+          <SectionNameForGroup />
+          <SectionNameForAllRecords />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Vertical Layout
+Each Individual Record</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <EngineSettings EngineDll="PortfolioPluginsEngine.dll" EngineDllEntryPoint="AlteryxPortfolioComposerLayoutPlugin" />
+    </Node>
+    <Node ToolID="86">
+      <GuiSettings Plugin="PortfolioPluginsGui.ComposerRender.PortfolioComposerRender">
+        <Position x="1605" y="260" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <TempFileType>pdf</TempFileType>
+          <BatchMode value="False" />
+          <DataField>Layout</DataField>
+          <Separator>Continuous</Separator>
+          <ShowHeader value="True" />
+          <HeaderField>Header</HeaderField>
+          <ShowFooter value="True" />
+          <FooterField>Footer</FooterField>
+          <OnFirstPage value="True" />
+          <HeaderFooterEdge Distance="0" />
+          <PortraitMode value="True" />
+          <PaperType Width="612" Height="792" Left="36" Right="36" Top="36" Bottom="36" />
+          <DefaultStyles>
+            <Style Name="TextStyle" FontName="Arial" FontSize="14" Justify="Left" ForeColor="#000000" Locale="1033" />
+          </DefaultStyles>
+          <PNGResolution>1</PNGResolution>
+          <PNGLargerAction>squeeze</PNGLargerAction>
+          <PNGLargerThanPageChoice>warning</PNGLargerThanPageChoice>
+          <PNGTransparentBG value="False" />
+          <PNGBackColor value="#ffffff" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText />
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <EngineSettings EngineDll="PortfolioPluginsEngine.dll" EngineDllEntryPoint="AlteryxPortfolioComposerRenderPlugin" />
+    </Node>
+    <Node ToolID="84">
+      <GuiSettings Plugin="AlteryxBasePluginsGui.AppendFields.AppendFields">
+        <Position x="1180" y="260" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <CartesianMode>Error</CartesianMode>
+          <SelectConfiguration>
+            <Configuration outputConnection="Output">
+              <OrderChanged value="False" />
+              <SelectFields>
+                <SelectField field="Target_Map" selected="True" />
+                <SelectField field="Source_Legend" selected="True" />
+                <SelectField field="*Unknown" selected="False" />
+              </SelectFields>
+            </Configuration>
+          </SelectConfiguration>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText />
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxAppendFields" />
+    </Node>
+    <Node ToolID="93">
+      <GuiSettings>
+        <Position x="1392" y="260" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Value name="HeaderText">Alteryx Thematic Map Report</Value>
+          <Value name="IncludeDate">True</Value>
+          <Value name="DateFormat">Month dd, yyyy</Value>
+          <Value name="IncludeImage">True</Value>
+          <Value name="AlteryxLogo">True</Value>
+          <Value name="OwnLogo">False</Value>
+          <Value name="ImageFile" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText />
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <EngineSettings Macro="HeaderMacro.yxmc" />
+    </Node>
+    <Node ToolID="94">
+      <GuiSettings>
+        <Position x="1499" y="260" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Value name="CopyrightText">© [CurrentYear] Alteryx, Inc.  All rights reserved. Alteryx is a registered trademark of Alteryx, Inc.</Value>
+          <Value name="InfoText">Alteryx, Inc. - info@alteryx.com - &lt;Link www.alteryx.com|www.alteryx.com&gt;  - 888 836 4274</Value>
+          <Value name="PageNumbers">True</Value>
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText />
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <EngineSettings Macro="FooterMacro.yxmc" />
+    </Node>
+    <Node ToolID="68">
+      <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+        <Position x="704" y="54" width="242" height="84" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Text>Create a quantitative thematic map to display the spatial distribution of ZIP Codes based on a customer file with purchase data.</Text>
+          <Font name="Segoe UI" size="8.25" style="0" />
+          <TextColor name="White" />
+          <FillColor name="White" />
+          <Shape shape="3" />
+          <Justification Justification="0" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText />
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+    </Node>
+    <Node ToolID="72">
+      <GuiSettings Plugin="AlteryxGuiToolkit.ToolContainer.ToolContainer">
+        <Position x="56" y="581" width="1606" height="407" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Caption>Expand this tool container for workflow descriptions</Caption>
+          <Style TextColor="#000000" FillColor="#e1e7f2" BorderColor="#000000" Transparency="25" Margin="10" />
+          <Disabled value="False" />
+          <Folded value="False" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText />
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <ChildNodes>
+        <Node ToolID="97">
+          <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+            <Position x="66" y="615" width="227" height="24" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <Text>Data input, spatial, transform, and prep</Text>
+              <Font name="Segoe UI" size="8.25" style="1" />
+              <TextColor name="Black" />
+              <FillColor name="White" />
+              <Shape shape="3" />
+              <Justification Justification="1" />
+            </Configuration>
+            <Annotation DisplayMode="0">
+              <Name />
+              <DefaultAnnotationText />
+              <Left value="False" />
+            </Annotation>
+          </Properties>
+        </Node>
+        <Node ToolID="98">
+          <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+            <Position x="66" y="639" width="493" height="206" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <Text>- Use the Input tool to bring in a Customer file with purchase data. 
+
+- Use the Create Points tool to assign a spatial object to each customer row based on the latitude and longitude columns.
+
+- Use a second Input tool to bring in ZIP Code file.
+
+- Use the Spatial Match tool to assign a spatial relationship where a customer is within a ZIP Code.
+
+- Use the Summarize tool to determine a customer purchase total per ZIP Code.
+
+- Use the Formula tool to create a new column to label the ZIP Codes on the map. The total purchase is converted to a string, a "$" is appended and the appropriate comma is included.</Text>
+              <Font name="Segoe UI" size="8.25" style="0" />
+              <TextColor name="Black" />
+              <FillColor name="White" />
+              <Shape shape="3" />
+              <Justification Justification="0" />
+            </Configuration>
+            <Annotation DisplayMode="0">
+              <Name />
+              <DefaultAnnotationText />
+              <Left value="False" />
+            </Annotation>
+          </Properties>
+        </Node>
+        <Node ToolID="99">
+          <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+            <Position x="632" y="618" width="168" height="24" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <Text>Reporting, prep, and append</Text>
+              <Font name="Segoe UI" size="8.25" style="1" />
+              <TextColor name="Black" />
+              <FillColor name="White" />
+              <Shape shape="3" />
+              <Justification Justification="1" />
+            </Configuration>
+            <Annotation DisplayMode="0">
+              <Name />
+              <DefaultAnnotationText />
+              <Left value="False" />
+            </Annotation>
+          </Properties>
+        </Node>
+        <Node ToolID="100">
+          <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+            <Position x="632" y="642" width="1020" height="336" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <Text>- Use the Report Map tool to create a thematic map. Specify the Purchase sum as the column to do a thematic map on. Within the Thematic Tab, Equal Count is selected as the Tile method because it produces a more interesting map. A range of green is chosen to reflect the purchase value of each ZIP Code.
+
+- Use the Report Text tool is configured to add a title to the map.
+
+- Use the Map Legend Splitter macro to extract all the elements of the legend into separate columns.
+
+- Use the Formala tool to add a $ symbols to the front of the 'ThemeBandFrom' and 'ThemeBandTo' columns and these columns are then used to build up the text for the 'Text' column.
+
+- Use the Map Legend Builder macro to rebuild the legend.
+
+- Use the Report Text tool to add a title to the legend.
+
+- Use the Append Fields tool to bring together the map and the legend columns.
+
+- Use the Layout tool to align the map and legend together vertically.
+
+- Use the Report Header macro to add a header column to the row.
+
+- Use the Report Footer macro to add a footer column to the row.
+
+- Use the Render tool to render the map to a PDF. After the workflow is run, view the PDF containing the map by clicking on the hyperlink in the Results Window.</Text>
+              <Font name="Segoe UI" size="8.25" style="0" />
+              <TextColor name="Black" />
+              <FillColor name="White" />
+              <Shape shape="3" />
+              <Justification Justification="0" />
+            </Configuration>
+            <Annotation DisplayMode="0">
+              <Name />
+              <DefaultAnnotationText />
+              <Left value="False" />
+            </Annotation>
+          </Properties>
+        </Node>
+      </ChildNodes>
+    </Node>
+  </Nodes>
+  <Connections>
+    <Connection>
+      <Origin ToolID="1" Connection="Output" />
+      <Destination ToolID="2" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="2" Connection="Output" />
+      <Destination ToolID="6" Connection="Targets" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="5" Connection="Output" />
+      <Destination ToolID="6" Connection="Universe" />
+    </Connection>
+    <Connection name="#2">
+      <Origin ToolID="5" Connection="Output" />
+      <Destination ToolID="64" Connection="Input" />
+    </Connection>
+    <Connection name="#1">
+      <Origin ToolID="17" Connection="Output" />
+      <Destination ToolID="64" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="6" Connection="Matched" />
+      <Destination ToolID="7" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="7" Connection="Output" />
+      <Destination ToolID="17" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="64" Connection="Output" />
+      <Destination ToolID="79" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="64" Connection="Output" />
+      <Destination ToolID="74" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="74" Connection="Output" />
+      <Destination ToolID="84" Connection="Targets" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="83" Connection="Output" />
+      <Destination ToolID="84" Connection="Source" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="79" Connection="Output" />
+      <Destination ToolID="81" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="81" Connection="Output" />
+      <Destination ToolID="82" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="82" Connection="Output" />
+      <Destination ToolID="83" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="85" Connection="Output" />
+      <Destination ToolID="93" Connection="Report Layout" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="84" Connection="Output" />
+      <Destination ToolID="85" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="93" Connection="Output13" />
+      <Destination ToolID="94" Connection="Report Layout" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="94" Connection="Output" />
+      <Destination ToolID="86" Connection="Input" />
+    </Connection>
+  </Connections>
+  <Properties>
+    <Memory default="True" />
+    <GlobalRecordLimit value="0" />
+    <TempFiles default="True" />
+    <Annotation on="True" includeToolName="False" />
+    <ConvErrorLimit value="10" />
+    <ConvErrorLimit_Stop value="False" />
+    <CancelOnError value="False" />
+    <DisableBrowse value="False" />
+    <EnablePerformanceProfiling value="False" />
+    <RunWithE2 value="True" />
+    <SortedGrouping value="True" />
+    <PredictiveToolsCodePage value="1252" />
+    <DisableAllOutput value="False" />
+    <ShowAllMacroMessages value="False" />
+    <ShowConnectionStatusIsOn value="True" />
+    <ShowConnectionStatusOnlyWhenRunning value="True" />
+    <ZoomLevel value="0" />
+    <LayoutType>Horizontal</LayoutType>
+    <MetaInfo>
+      <NameIsFileName value="True" />
+      <Name>04 Create_a_report_with_a_thematic_map</Name>
+      <Description />
+      <RootToolName />
+      <ToolVersion />
+      <ToolInDb value="False" />
+      <CategoryName />
+      <SearchTags />
+      <Author />
+      <Company />
+      <Copyright />
+      <DescriptionLink actual="" displayed="" />
+      <Example>
+        <Description />
+        <File />
+      </Example>
+      <WorkflowId value="7d733538-e4c5-4fc6-ba19-45ffb59b83c9" />
+      <Telemetry>
+        <PreviousWorkflowId value="" />
+        <OriginWorkflowId value="7d733538-e4c5-4fc6-ba19-45ffb59b83c9" />
+      </Telemetry>
+    </MetaInfo>
+    <Events>
+      <Enabled value="True" />
+    </Events>
+  </Properties>
+</AlteryxDocument>

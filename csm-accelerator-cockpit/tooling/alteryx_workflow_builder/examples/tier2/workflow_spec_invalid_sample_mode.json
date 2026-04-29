@@ -1,0 +1,44 @@
+{
+  "id": "tier2_invalid_sample_mode",
+  "goal": "Schema should fail when sample mode requires value not provided.",
+  "inputs": [
+    {
+      "name": "orders",
+      "type": "csv",
+      "path": "examples/support_sla/data/tickets.csv"
+    }
+  ],
+  "steps": [
+    {
+      "id": "input_orders",
+      "op": "csv_input",
+      "args": {
+        "path": "examples/support_sla/data/tickets.csv"
+      }
+    },
+    {
+      "id": "bad_sample",
+      "op": "sample",
+      "depends_on": ["input_orders"],
+      "args": {
+        "mode": "random_n"
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "type": "file",
+      "format": "csv",
+      "path": "./bad_sample.csv"
+    }
+  ],
+  "assumptions": [
+    "Negative fixture"
+  ],
+  "metadata": {
+    "author": "codex",
+    "version": "1.0.0",
+    "designer_profile": "2025.2",
+    "designer_version": "2025.2"
+  }
+}

@@ -1,0 +1,6 @@
+TicketID,Assignee,MinutesToResolve,Priority,CreatedDate
+1001,Ada,180,High,2026-01-01
+1002,Ada,720,Medium,2026-01-02
+1003,Bob,90,High,2026-01-03
+1004,Bob,2100,Low,2026-01-04
+1005,Chen,60,High,2026-01-05

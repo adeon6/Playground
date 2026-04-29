@@ -1,67 +1,42 @@
 # alteryx-workflow-builder
 
-Developer notes for the repo-local Codex skill that converts business problems into Alteryx workflow artifacts and enforces static QA checks.
+Repository-local Codex skill for deterministic Alteryx workflow generation and static validation.
 
-## Python
-- Python 3.10+
-- Dependency: `jsonschema`
+## What It Does
+- Builds `workflow_spec.json` from a prompt or uses an existing spec.
+- Compiles to Designer-style `main.yxmd` (canonical `GuiSettings/Position` and `Connection/Origin/Destination`).
+- Emits `validation_report.json` with capability support-state (`robust|beta|unsupported`) and fallback diagnostics.
+- Enforces tier-2 native coverage (`datetime`, `text_to_columns`, `multi_row_formula`, `cross_tab`, `transpose`, `sample`, `data_cleansing`, `record_id`, `browse`).
 
-Install dependency:
+## Modes
+- `demo`: relaxed naming/layout policy, Browse allowed.
+- `starter_kit`: strict starter-kit policy (no Browse in non-TOC, deterministic output naming, stricter layout/naming checks).
+
+## Version/Profile Policy
+- Default profile/version: `2025.2`.
+- Compatibility profile: `2025.1`.
+- Resolution order: explicit CLI override -> spec metadata -> registry default.
+
+## Core Commands
 ```bash
-python -m pip install jsonschema
+python3 scripts/alteryx_build.py --problem "Build SLA summary from tickets.csv" --out_dir ./dist --mode demo
+python3 scripts/alteryx_build.py --spec ./examples/support_sla/workflow_spec.json --out_dir ./dist --mode starter_kit --designer_profile 2025.2
+python3 scripts/compile.py --spec ./examples/support_sla/workflow_spec.json --out_dir ./dist --mode demo
+python3 scripts/lint_yxmd.py ./dist --recursive --mode demo --report ./dist/lint_report.json
+python3 verify_workflows.py --dirs ./golden --mode demo
+python3 scripts/golden_sanity.py
+python3 scripts/smoke_test.py
 ```
 
-## Main CLI
+## Tier-2 Regression and Corpus Tools
 ```bash
-python scripts/alteryx_build.py --problem "Build a weekly SLA dashboard workflow from tickets.csv" --out_dir ./dist
-python scripts/alteryx_build.py --spec ./examples/support_sla/workflow_spec.json --out_dir ./dist --designer_version 2025.1 --package
+python3 scripts/regress_tier2_signatures.py
+python3 scripts/index_challenge_corpus.py --root /path/to/weekly_challenges
+python3 scripts/extract_tool_signatures.py /path/to/workflow.yxmd --out ./dist/signatures.json
 ```
 
-## Static Lint
+## Distribution Hygiene
 ```bash
-python scripts/lint_yxmd.py ./dist --recursive --expected-version 2025.1 --report ./dist/lint_report.json
+python3 scripts/clean_skill_tree.py .
+python3 scripts/sync_installed_skill.py --target /Users/joshua.burkhow/.codex/skills/alteryx-workflow-builder
 ```
-
-## Workflow Image Preview
-Generate a canvas-style PNG preview from workflow XML:
-```bash
-python scripts/render_workflow_image.py ./dist/01_support_sla_weekly.yxmd --out ./dist/01_support_sla_weekly.png
-```
-
-Notes:
-- This is a recreated preview, not a true Alteryx Designer screenshot.
-- `scripts/render_workflow_image.py` is the canonical renderer.
-- `scripts/render_workflow_image_v2.py` is kept only as a compatibility alias to the same implementation.
-- Dependency: `pillow`
-- Install with:
-```bash
-python -m pip install pillow
-```
-
-## Real Designer Screenshot
-Capture a true screenshot from an Alteryx Designer window by automating `File > Open` and then grabbing the window:
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\capture_designer_screenshot.ps1 `
-  -WorkflowPath ".\dist\01_support_sla_weekly.yxmd" `
-  -OutputPath ".\dist\01_support_sla_weekly.designer.png"
-```
-
-Notes:
-- This is intended for local interactive Windows sessions.
-- It is especially useful for `.yxwz` analytic apps, where shell-opening the file may not open the editable Designer view directly.
-
-## Low-level Commands
-```bash
-python scripts/validate_spec.py --spec ./examples/support_sla/workflow_spec.json
-python scripts/compile.py --spec ./examples/support_sla/workflow_spec.json --out_dir ./dist
-python scripts/package_yxzp.py --source_dir ./dist --out ./dist/package.yxzp
-python scripts/smoke_test.py
-```
-
-## Notes
-- Compiler outputs stable tool IDs from SHA-1 hashes of step IDs.
-- Layout is deterministic: fixed X spacing and branch-aware Y offsets.
-- Default generated `yxmdVer` is `2025.1` unless overridden by `metadata.designer_version`.
-- Linter catches non-runtime issues (invalid XML, unresolved placeholders, broken connections, duplicate ToolIDs, risky absolute paths).
-- Runtime verification is a separate step from static linting. Use `C:\Program Files\Alteryx\bin\AlteryxEngineCmd.exe <workflow.yxmd>` to execute a workflow outside Designer when live validation is needed.
-- To inspect runtime results from CLI-driven execution, wire a temporary Browse or Output Data tool, run the workflow with `AlteryxEngineCmd.exe`, then inspect the produced temp/output artifact before finalizing fixes.

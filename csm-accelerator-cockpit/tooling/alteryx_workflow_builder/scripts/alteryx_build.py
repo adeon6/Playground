@@ -6,8 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
-import re
 import shutil
 from pathlib import Path
 from typing import Any
@@ -15,92 +13,17 @@ from typing import Any
 from compile import compile_spec_file
 from package_yxzp import create_package
 
-DEFAULT_DESIGNER_VERSION = "2025.1"
-DETERMINISTIC_OUTPUT_PREFIX_RE = r"^(customgpt_|[0-9]{2}_)"
+DEFAULT_DESIGNER_VERSION = "2025.2"
+DEFAULT_DESIGNER_PROFILE = "2025.2"
+DEFAULT_MODE = "demo"
 
 
-def _rewrite_local_paths_for_output(spec_doc: dict[str, Any], out_dir: Path, source_base: Path) -> dict[str, Any]:
-    """Rewrite file-based input paths so generated workflows resolve them from out_dir.
-
-    Alteryx resolves relative file references from the workflow location, not from the
-    original spec location or the shell's current working directory. Normalize known
-    input paths to be relative to the output workflow folder.
-    """
-    rewritten = json.loads(json.dumps(spec_doc))
-
-    def _maybe_rewrite_path(raw_path: Any) -> Any:
-        if not isinstance(raw_path, str):
-            return raw_path
-        text = raw_path.strip()
-        if not text:
-            return raw_path
-
-        candidate = Path(text)
-        if candidate.is_absolute():
-            return raw_path
-
-        resolved = (source_base / candidate).resolve()
-        try:
-            relative = resolved.relative_to(out_dir.resolve())
-            return relative.as_posix()
-        except ValueError:
-            return Path(os.path.relpath(resolved, out_dir.resolve())).as_posix()
-
-    for input_item in rewritten.get("inputs", []):
-        if isinstance(input_item, dict) and input_item.get("path"):
-            input_item["path"] = _maybe_rewrite_path(input_item["path"])
-
-    for step in rewritten.get("steps", []):
-        if not isinstance(step, dict):
-            continue
-        args = step.get("args")
-        if not isinstance(args, dict):
-            continue
-        if step.get("op") in {"csv_input", "file_input"} and args.get("path"):
-            args["path"] = _maybe_rewrite_path(args["path"])
-
-    return rewritten
-
-
-def _normalize_output_filenames(spec_doc: dict[str, Any]) -> dict[str, Any]:
-    """Make output filenames deterministic for repo validation rules."""
-    rewritten = json.loads(json.dumps(spec_doc))
-
-    def _normalize_path(raw_path: Any) -> Any:
-        if not isinstance(raw_path, str):
-            return raw_path
-        text = raw_path.strip()
-        if not text:
-            return raw_path
-
-        path = Path(text)
-        name = path.name
-        if not name or re.match(DETERMINISTIC_OUTPUT_PREFIX_RE, name, flags=re.IGNORECASE):
-            return raw_path
-
-        normalized_name = f"01_{name}"
-        parent = path.parent
-        if str(parent) in {"", "."}:
-            return f"./{normalized_name}"
-        return (parent / normalized_name).as_posix()
-
-    for step in rewritten.get("steps", []):
-        if not isinstance(step, dict):
-            continue
-        args = step.get("args")
-        if not isinstance(args, dict):
-            continue
-        if step.get("op") == "output_file" and args.get("path"):
-            args["path"] = _normalize_path(args["path"])
-
-    for output in rewritten.get("outputs", []):
-        if isinstance(output, dict) and output.get("type") == "file" and output.get("path"):
-            output["path"] = _normalize_path(output["path"])
-
-    return rewritten
-
-
-def draft_spec_from_problem(problem: str, designer_version: str = DEFAULT_DESIGNER_VERSION) -> dict[str, Any]:
+def draft_spec_from_problem(
+    problem: str,
+    designer_version: str = DEFAULT_DESIGNER_VERSION,
+    designer_profile: str = DEFAULT_DESIGNER_PROFILE,
+    mode: str = DEFAULT_MODE,
+) -> dict[str, Any]:
     """Create a deterministic draft workflow spec from free-text problem input.
 
     Replace this heuristic planner with an LLM planner that emits schema-valid JSON.
@@ -202,6 +125,8 @@ def draft_spec_from_problem(problem: str, designer_version: str = DEFAULT_DESIGN
             "author": "codex",
             "version": "1.0.0",
             "designer_version": designer_version,
+            "designer_profile": designer_profile,
+            "mode": mode,
         },
     }
 
@@ -231,8 +156,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--designer_version",
         type=str,
-        default=DEFAULT_DESIGNER_VERSION,
-        help="Target Alteryx yxmdVer value (default: 2025.1)",
+        default=None,
+        help="Optional target Alteryx yxmdVer override",
+    )
+    parser.add_argument(
+        "--designer_profile",
+        type=str,
+        default=None,
+        choices=["2025.1", "2025.2"],
+        help="Optional capability profile override",
+    )
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default=None,
+        choices=["starter_kit", "demo"],
+        help="Optional governance mode override for validation behavior",
     )
     parser.add_argument("--package", action="store_true", help="Create .yxzp package")
     parser.add_argument(
@@ -247,6 +186,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional sample file or folder copied into out_dir/data before packaging",
     )
+    parser.add_argument(
+        "--capability_registry",
+        type=Path,
+        default=root / "references" / "capability_registry.json",
+        help="Capability registry JSON path",
+    )
 
     return parser.parse_args()
 
@@ -257,13 +202,15 @@ def main() -> int:
     out_dir = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    for existing_yxmd in out_dir.glob("*.yxmd"):
-        existing_yxmd.unlink()
-
     spec_out_path = out_dir / "workflow_spec.json"
 
     if args.problem:
-        spec_doc = draft_spec_from_problem(args.problem, designer_version=args.designer_version)
+        spec_doc = draft_spec_from_problem(
+            args.problem,
+            designer_version=args.designer_version or DEFAULT_DESIGNER_VERSION,
+            designer_profile=args.designer_profile or DEFAULT_DESIGNER_PROFILE,
+            mode=args.mode or DEFAULT_MODE,
+        )
         with spec_out_path.open("w", encoding="utf-8") as handle:
             json.dump(spec_doc, handle, indent=2)
         print(f"Draft spec generated at {spec_out_path}")
@@ -272,13 +219,12 @@ def main() -> int:
             raise ValueError("--spec is required when --problem is not provided")
         spec_doc = json.loads(args.spec.read_text(encoding="utf-8"))
         metadata = spec_doc.setdefault("metadata", {})
-        metadata["designer_version"] = args.designer_version
-        spec_doc = _normalize_output_filenames(spec_doc)
-        spec_doc = _rewrite_local_paths_for_output(
-            spec_doc=spec_doc,
-            out_dir=out_dir,
-            source_base=Path.cwd(),
-        )
+        if args.designer_version:
+            metadata["designer_version"] = args.designer_version
+        if args.designer_profile:
+            metadata["designer_profile"] = args.designer_profile
+        if args.mode:
+            metadata["mode"] = args.mode
         with spec_out_path.open("w", encoding="utf-8") as handle:
             json.dump(spec_doc, handle, indent=2)
         print(f"Copied spec to {spec_out_path}")
@@ -288,6 +234,10 @@ def main() -> int:
         out_dir=out_dir,
         schema_path=args.schema,
         templates_dir=args.templates_dir,
+        capability_registry_path=args.capability_registry,
+        mode_override=args.mode,
+        designer_profile_override=args.designer_profile,
+        designer_version_override=args.designer_version,
     )
     print(f"Wrote {yxmd_path}")
     print(f"Wrote {report_path}")

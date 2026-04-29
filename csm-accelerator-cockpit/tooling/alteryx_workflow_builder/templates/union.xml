@@ -1,0 +1,18 @@
+<Node ToolID="{{TOOL_ID}}">
+  <GuiSettings Plugin="{{PLUGIN}}">
+    <Position x="{{X}}" y="{{Y}}" />
+  </GuiSettings>
+  <Properties>
+    <Configuration>
+      <AutoConfig value="{{UNION_AUTO_CONFIG}}" />
+      <Args>
+        {{ARGS_XML}}
+      </Args>
+      {{CONFIG_XML}}
+    </Configuration>
+    <Annotation DisplayMode="0">
+      <Name>{{LABEL}}</Name>
+    </Annotation>
+  </Properties>
+  <EngineSettings EngineDll="{{ENGINE_DLL}}" EngineDllEntryPoint="{{ENGINE_ENTRYPOINT}}" />
+</Node>

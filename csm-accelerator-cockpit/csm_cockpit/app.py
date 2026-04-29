@@ -43,7 +43,7 @@ from .services import (
 )
 
 
-app = FastAPI(title="CSM Accelerator Cockpit V4.4.1")
+app = FastAPI(title="CSM Accelerator Cockpit V5")
 app.mount("/static", StaticFiles(directory=static_root()), name="static")
 templates = Jinja2Templates(directory=template_root())
 

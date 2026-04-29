@@ -49,46 +49,6 @@ Text rectangle fully contained inside box rectangle.
 Detection Method:
 Strict rectangle containment with conservative text estimation.
 
-### Mistake ID: M-COMP-001
-Description:
-One or more actual tools are left free-roaming without belonging to a clearly titled Tool Container.
-
-Correct Behavior:
-Every actual tool belongs to at least one contextual Tool Container with a non-empty caption or annotation that explains the group.
-
-Detection Method:
-Traverse the container ancestry for each non-textbox, non-container node and fail when no titled Tool Container ancestor exists.
-
-### Mistake ID: M-COMP-002
-Description:
-The workflow title is not the highest header element, or explanatory header notes are arranged beside the title instead of beneath it.
-
-Correct Behavior:
-The title sits at the top of the header stack, and secondary header notes are placed below it.
-
-Detection Method:
-Inspect top-level header text boxes, identify the primary title by font prominence, and fail when other header notes are not positioned below it.
-
-### Mistake ID: M-CONN-001
-Description:
-The workflow is technically valid but visually tangled, with avoidable connector crossings or fan-in/fan-out knots that make the reader untangle a spiderweb to follow the logic.
-
-Correct Behavior:
-Actively rearrange source order, lane placement, branch hubs, and section spacing to minimize connector tangles. A beautified workflow should let a reader follow each branch with little to no visual decoding effort.
-
-Detection Method:
-Use rendered workflow review and connector-topology checks where available. Until deterministic crossing detection is implemented, treat this as a mandatory visual review failure when avoidable tangles remain.
-
-### Mistake ID: M-COMP-003
-Description:
-One or more header explanation boxes are styled so lightly that they read like plain uncolored comments.
-
-Correct Behavior:
-Header explanation boxes use visible fills and readable contrast so they register as intentional workflow guidance panels.
-
-Detection Method:
-Inspect top-level explanatory text boxes and fail when fill styling is missing or effectively white.
-
 ### Mistake ID: M-TEXT-001
 Description:
 Unnecessary line breaks produce broken phrases or orphan lines.
@@ -138,3 +98,33 @@ Every hard rule maps to a check in `verify_workflows.py`.
 
 Detection Method:
 Governance agent parses rules and fails missing rule->check mapping.
+
+### Mistake ID: M-CAP-001
+Description:
+Tier-2 tool emitted through generic fallback plugin container.
+
+Correct Behavior:
+Tier-2 tools must compile to dedicated native plugin templates.
+
+Detection Method:
+Fail when generic plugin node advertises a tier-2 operation in configuration.
+
+### Mistake ID: M-CAP-002
+Description:
+Tier-2 tool configuration emitted without minimum required semantic payload.
+
+Correct Behavior:
+Each tier-2 tool includes required config nodes/fields for deterministic static validation.
+
+Detection Method:
+Per-tool semantic checks for required configuration node presence.
+
+### Mistake ID: M-CAP-003
+Description:
+Tool/plugin emitted for a profile where it is unavailable.
+
+Correct Behavior:
+Tool usage remains compatible with profile implied by workflow version (2025.1/2025.2).
+
+Detection Method:
+Registry availability checks by plugin->op mapping and `yxmdVer` profile.

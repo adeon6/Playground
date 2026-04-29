@@ -302,19 +302,21 @@ def parse_connections(root: ET.Element) -> list[Connection]:
 
 
 def wrap(text: str, width: int) -> str:
-    words = text.split()
-    if not words:
-        return ""
     lines: list[str] = []
-    current = words[0]
-    for word in words[1:]:
-        candidate = f"{current} {word}"
-        if len(candidate) <= width:
-            current = candidate
-        else:
-            lines.append(current)
-            current = word
-    lines.append(current)
+    for source_line in text.splitlines():
+        words = source_line.split()
+        if not words:
+            lines.append("")
+            continue
+        current = words[0]
+        for word in words[1:]:
+            candidate = f"{current} {word}"
+            if len(candidate) <= width:
+                current = candidate
+            else:
+                lines.append(current)
+                current = word
+        lines.append(current)
     return "\n".join(lines)
 
 

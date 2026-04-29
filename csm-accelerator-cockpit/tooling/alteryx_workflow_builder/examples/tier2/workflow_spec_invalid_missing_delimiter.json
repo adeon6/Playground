@@ -1,0 +1,44 @@
+{
+  "id": "tier2_invalid_missing_delimiter",
+  "goal": "Schema should fail when text_to_columns delimiter is absent.",
+  "inputs": [
+    {
+      "name": "orders",
+      "type": "csv",
+      "path": "examples/support_sla/data/tickets.csv"
+    }
+  ],
+  "steps": [
+    {
+      "id": "input_orders",
+      "op": "csv_input",
+      "args": {
+        "path": "examples/support_sla/data/tickets.csv"
+      }
+    },
+    {
+      "id": "bad_split",
+      "op": "text_to_columns",
+      "depends_on": ["input_orders"],
+      "args": {
+        "field": "Assignee"
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "type": "file",
+      "format": "csv",
+      "path": "./bad.csv"
+    }
+  ],
+  "assumptions": [
+    "Negative fixture"
+  ],
+  "metadata": {
+    "author": "codex",
+    "version": "1.0.0",
+    "designer_profile": "2025.2",
+    "designer_version": "2025.2"
+  }
+}

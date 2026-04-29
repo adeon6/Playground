@@ -1,8 +1,6 @@
 ---
 name: alteryx-beautification
-description: Use when creating, beautifying, or refactoring Alteryx workflows (.yxmd, .yxmc, .yxwz) where the canvas must read clearly in Designer. Apply lane discipline, contextual containers, native-feeling on-canvas documentation, render-review iteration, and aggressive spiderweb reduction without changing business logic.
-metadata:
-  short-description: Beautify Alteryx workflows with lane discipline and render review
+description: Use when creating, beautifying, or refactoring Alteryx workflows (.yxmd, .yxmc, .yxwz) where the canvas must read clearly in Designer. Apply lane discipline, contextual containers, native-feeling on-canvas documentation, customer-facing canvas framing, render-review iteration, and aggressive spiderweb reduction without changing business logic. Pair with alteryx-workflow-builder for workflow generation, workflow_spec design, native tool XML, validation, linting, and packaging.
 ---
 
 # Alteryx Beautification
@@ -10,6 +8,13 @@ metadata:
 ## Overview
 
 Use this skill when a workflow needs to look intentional and readable on the canvas, not merely valid in XML. The goal is a customer-safe or colleague-safe Alteryx workflow with a clear narrative, semantically titled containers, readable annotations, and connector routing that does not force the reader to untangle a web.
+
+## Ownership Boundary
+
+- This skill owns visual design: canvas composition, section/container naming, documentation framing, annotations, connector readability, render review, and customer-facing polish.
+- `alteryx-workflow-builder` owns workflow generation, workflow_spec design, native tool XML, tool configuration rules, validation/lint commands, package safety, and remediation of structural workflow defects.
+- When creating a workflow from scratch, changing tool logic, validating XML, compiling from a spec, or packaging outputs, use `alteryx-workflow-builder` first and then apply this skill for the visual pass.
+- When beautifying an existing workflow, preserve business logic and use builder validation tools when available to prove the XML remains structurally sound.
 
 ## Use This Skill For
 
@@ -22,6 +27,7 @@ Use this skill when a workflow needs to look intentional and readable on the can
 ## Do Not Use This Skill For
 
 - Pure business-logic changes where canvas readability is not part of the request
+- Generating workflow XML, building a workflow_spec, or choosing native Alteryx tool configuration without `alteryx-workflow-builder`
 - Blindly minimizing tool count when that would worsen scanability
 - Claiming a workflow is complete before a render review has passed
 
@@ -40,9 +46,11 @@ Use this skill when a workflow needs to look intentional and readable on the can
    - prefer native tool annotations for key logic
    - use only a few strong comment boxes
    - if the workflow is customer-facing, a bottom reading guide is often better than cluttering the tool lanes
+   - for customer-facing workflows, frame the canvas with a concise top banner and a bottom documentation shelf
+   - keep long explanation outside the tool lane unless it clarifies the exact nearby logic
+   - for customer-facing accelerator work, use [customer-facing-hybrid-profile.md](references/customer-facing-hybrid-profile.md) and its reference workflow as the primary visual standard
 6. Validate and iterate:
-   - run the workflow verifier if available
-   - run lint checks if available
+   - run `alteryx-workflow-builder` verifier/lint checks when the builder skill is installed
    - render the workflow preview
    - inspect the picture, not just the XML
    - if the workflow still feels tangled, keep going
@@ -60,6 +68,7 @@ Use this skill when a workflow needs to look intentional and readable on the can
 ## Read These References
 
 - Read [layout-playbook.md](references/layout-playbook.md) for the core composition rules.
+- Read [customer-facing-hybrid-profile.md](references/customer-facing-hybrid-profile.md) when the workflow must be customer-presentable on first open.
 - Read [spiderweb-reduction.md](references/spiderweb-reduction.md) when crossings, crowded hubs, or branch tangles are the problem.
 - Read [validation-loop.md](references/validation-loop.md) for the practical validate-render-run loop.
 - Read [example-notes.md](references/example-notes.md) if you want concrete example patterns and review cues.

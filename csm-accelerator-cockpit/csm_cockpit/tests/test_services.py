@@ -122,6 +122,30 @@ class CockpitServicesTest(unittest.TestCase):
             finally:
                 services.RUNS_DIR = original_runs_dir
 
+    def test_project_scaffold_uses_jon_operating_system_folders(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp)
+            try:
+                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+                services.save_manifest(manifest)
+                project_dir = Path(tmp) / manifest["run_id"]
+                expected = [
+                    "00_start_here",
+                    "01_discovery",
+                    "02_sop_authoring",
+                    "03_workflow_build",
+                    "04_reference_examples",
+                    "sequencer",
+                    "tooling",
+                ]
+                for folder in expected:
+                    self.assertTrue((project_dir / folder).exists(), folder)
+                self.assertTrue((project_dir / "00_start_here" / "README_process_pack.md").exists())
+            finally:
+                services.RUNS_DIR = original_runs_dir
+
     def test_generate_docs_writes_run_folder_only(self) -> None:
         sections = services.JON_SECTIONS
         with tempfile.TemporaryDirectory() as tmp:
@@ -142,15 +166,39 @@ class CockpitServicesTest(unittest.TestCase):
                     path = Path(manifest["artifacts"][artifact]["path"])
                     self.assertTrue(path.exists(), artifact)
                     self.assertTrue(str(path).startswith(tmp))
-                prompt_path = Path(tmp) / manifest["run_id"] / "status" / "codex_workflow_build_prompt.md"
-                helper_path = Path(tmp) / manifest["run_id"] / "status" / "START_CODEX_WORKFLOW_BUILD.ps1"
-                build_manifest_path = Path(tmp) / manifest["run_id"] / "status" / "workflow_build_manifest.json"
+                prompt_path = Path(manifest["artifacts"][services.WORKFLOW_PROMPT_ARTIFACT]["path"])
+                helper_path = Path(manifest["artifacts"][services.WORKFLOW_HELPER_ARTIFACT]["path"])
+                build_manifest_path = Path(manifest["artifacts"][services.WORKFLOW_MANIFEST_ARTIFACT]["path"])
                 self.assertTrue(prompt_path.exists())
                 self.assertTrue(helper_path.exists())
                 self.assertTrue(build_manifest_path.exists())
-                self.assertTrue((Path(tmp) / manifest["run_id"] / "status" / "next_stage_prompt.md").exists())
+                self.assertTrue((Path(tmp) / manifest["run_id"] / "03_workflow_build" / "status" / "next_stage_prompt.md").exists())
                 readiness = services.calculate_readiness(manifest, sections)
                 self.assertEqual(readiness["workflow_gate"], "ready")
+            finally:
+                services.RUNS_DIR = original_runs_dir
+
+    def test_transcript_evidence_is_advisory_not_workflow_blocking(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp)
+            try:
+                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+                for section in sections:
+                    manifest["capture"][section.id]["status"] = "answered"
+                    manifest["capture"][section.id]["notes"] = f"{section.label} notes"
+                    manifest["capture"][section.id]["approved"] = True
+                manifest["analysis"] = {
+                    section.id: {"status": "missing", "score": 0, "evidence": [], "summary": "No transcript support.", "recommendation": "CSM may keep as approved fact."}
+                    for section in sections
+                }
+                manifest = services.generate_docs(manifest, sections)
+                readiness = services.calculate_readiness(manifest, sections)
+                self.assertEqual(readiness["workflow_gate"], "ready")
+                self.assertFalse(any("transcript answer" in blocker for blocker in readiness["blockers"]))
+                gap_log = Path(manifest["artifacts"]["sop_gap_log.md"]["path"]).read_text(encoding="utf-8")
+                self.assertIn("| None |", gap_log)
             finally:
                 services.RUNS_DIR = original_runs_dir
 
@@ -180,9 +228,9 @@ class CockpitServicesTest(unittest.TestCase):
                     for section in sections
                 }
                 manifest = services.generate_docs(manifest, sections)
-                value_text = (Path(tmp) / manifest["run_id"] / "docs" / "04_value_statement.md").read_text(encoding="utf-8")
-                use_case_text = (Path(tmp) / manifest["run_id"] / "docs" / "05_use_case_summary.md").read_text(encoding="utf-8")
-                case_study_text = (Path(tmp) / manifest["run_id"] / "docs" / "06_case_study_skeleton.md").read_text(encoding="utf-8")
+                value_text = Path(manifest["artifacts"]["04_value_statement.md"]["path"]).read_text(encoding="utf-8")
+                use_case_text = Path(manifest["artifacts"]["05_use_case_summary.md"]["path"]).read_text(encoding="utf-8")
+                case_study_text = Path(manifest["artifacts"]["06_case_study_skeleton.md"]["path"]).read_text(encoding="utf-8")
                 self.assertIn("Reduce exception review time", value_text)
                 self.assertIn("manually reconcile inventory exceptions", value_text)
                 self.assertIn("Which cases should operations review first?", use_case_text)
@@ -191,7 +239,7 @@ class CockpitServicesTest(unittest.TestCase):
                     self.assertIn(artifact, manifest["artifacts"])
                     self.assertEqual(manifest["artifacts"][artifact]["group"], "customer_facing_assets")
                 self.assertEqual(manifest["peer_review"]["state"], "ready_for_peer_review")
-                peer_status = json.loads((Path(tmp) / manifest["run_id"] / services.PEER_REVIEW_STATUS_ARTIFACT).read_text(encoding="utf-8"))
+                peer_status = json.loads(Path(manifest["artifacts"][services.PEER_REVIEW_STATUS_ARTIFACT]["path"]).read_text(encoding="utf-8"))
                 self.assertTrue(peer_status["ready_for_peer_review"])
             finally:
                 services.RUNS_DIR = original_runs_dir
@@ -220,16 +268,18 @@ class CockpitServicesTest(unittest.TestCase):
                 self.assertIn("Mandatory Identity And Path Gate", prompt_text)
                 self.assertIn(str((Path(tmp) / manifest["run_id"]).resolve()), prompt_text)
                 self.assertIn("Do not search parent folders", prompt_text)
-                self.assertIn("docs/03_accelerator_sop.md", prompt_text)
-                self.assertIn("docs/04_value_statement.md", prompt_text)
-                self.assertIn("docs/07_accelerator_101.md", prompt_text)
+                self.assertIn("02_sop_authoring/03_accelerator_sop.md", prompt_text)
+                self.assertIn("04_reference_examples/accelerator_assets/04_value_statement.md", prompt_text)
+                self.assertIn("04_reference_examples/accelerator_assets/07_accelerator_101.md", prompt_text)
                 self.assertIn("supporting context", prompt_text)
                 self.assertIn("Alteryx workflow-builder toolkit", prompt_text)
                 self.assertIn("Beautification rules", prompt_text)
+                self.assertIn("customer-facing hybrid reference", prompt_text.lower())
+                self.assertIn("do not bypass the approved SOP/doc chain", prompt_text)
                 self.assertIn("spiderweb reduction", prompt_text.lower())
-                self.assertIn("workflows", prompt_text)
+                self.assertIn("03_workflow_build/workflows", prompt_text)
                 self.assertEqual(manifest["workflow_build"]["status"], "prompt_ready")
-                build_manifest = json.loads((Path(tmp) / manifest["run_id"] / "status" / "workflow_build_manifest.json").read_text(encoding="utf-8"))
+                build_manifest = json.loads(Path(manifest["artifacts"][services.WORKFLOW_MANIFEST_ARTIFACT]["path"]).read_text(encoding="utf-8"))
                 self.assertEqual(build_manifest["run_id"], manifest["run_id"])
                 self.assertEqual(build_manifest["canonical_project_root"], str((Path(tmp) / manifest["run_id"]).resolve()))
                 self.assertEqual(build_manifest["project_identity_hash"], manifest["project_identity"]["identity_hash"])
@@ -308,8 +358,8 @@ class CockpitServicesTest(unittest.TestCase):
                     for section in sections
                 }
                 manifest = services.generate_docs(manifest, sections)
-                sop_text = (Path(tmp) / manifest["run_id"] / "docs" / "03_accelerator_sop.md").read_text(encoding="utf-8")
-                assessment_text = (Path(tmp) / manifest["run_id"] / "docs" / "sop_architecture_assessment.md").read_text(encoding="utf-8")
+                sop_text = Path(manifest["artifacts"]["03_accelerator_sop.md"]["path"]).read_text(encoding="utf-8")
+                assessment_text = Path(manifest["artifacts"]["sop_architecture_assessment.md"]["path"]).read_text(encoding="utf-8")
                 self.assertIn("Operational Readiness And Phasing", sop_text)
                 self.assertIn("Value Realisation", sop_text)
                 self.assertNotIn("Operational Constraints", sop_text)

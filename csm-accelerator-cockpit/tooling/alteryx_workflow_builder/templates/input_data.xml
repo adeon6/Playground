@@ -1,22 +1,17 @@
 <Node ToolID="{{TOOL_ID}}">
-  <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxDbFileInput" />
-  <GuiSettings Plugin="AlteryxBasePluginsGui.DbFileInput.DbFileInput">
+  <GuiSettings Plugin="{{PLUGIN}}">
     <Position x="{{X}}" y="{{Y}}" />
   </GuiSettings>
   <Properties>
     <Configuration>
-      <File SearchSubDirs="False" RecordLimit="" FileFormat="0">{{INPUT_PATH}}</File>
-      <FormatSpecificOptions>
-        <Delimeter>,</Delimeter>
-        <FieldLen>254</FieldLen>
-        <HeaderRow>True</HeaderRow>
-      </FormatSpecificOptions>
+      <File>{{INPUT_PATH}}</File>
+      <Connection>{{CONNECTION_STRING}}</Connection>
+      <Passwords />
       {{CONFIG_XML}}
     </Configuration>
     <Annotation DisplayMode="0">
-      <Name />
-      <DefaultAnnotationText>{{INPUT_PATH}}</DefaultAnnotationText>
-      <Left value="False" />
+      <Name>{{LABEL}}</Name>
     </Annotation>
   </Properties>
+  <EngineSettings EngineDll="{{ENGINE_DLL}}" EngineDllEntryPoint="{{ENGINE_ENTRYPOINT}}" />
 </Node>

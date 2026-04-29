@@ -14,7 +14,7 @@ from typing import Any
 from docx import Document
 
 
-APP_VERSION = "0.5.5"
+APP_VERSION = "0.6.0"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 COCKPIT_ROOT = Path(__file__).resolve().parent
@@ -90,14 +90,50 @@ ARTIFACT_LABELS = {
     PEER_REVIEW_STATUS_ARTIFACT: "Peer-review status",
 }
 
+JON_PROCESS_FOLDERS = [
+    "00_start_here",
+    "01_discovery",
+    "02_sop_authoring",
+    "03_workflow_build",
+    "04_reference_examples",
+    "sequencer",
+]
+
+WORKFLOW_STATUS_DIR = "03_workflow_build/status"
+WORKFLOW_OUTPUT_DIR = "03_workflow_build/workflows"
+WORKFLOW_VALIDATION_DIR = "03_workflow_build/validation"
+ACCELERATOR_ASSET_DIR = "04_reference_examples/accelerator_assets"
+
+ARTIFACT_PATHS = {
+    "01_customer_discovery_conversation.md": "01_discovery/01_customer_discovery_conversation.md",
+    "02_guided_sop_capture.md": "02_sop_authoring/02_guided_sop_capture.md",
+    "03_accelerator_sop.md": "02_sop_authoring/03_accelerator_sop.md",
+    "sop_gap_log.md": "02_sop_authoring/sop_gap_log.md",
+    "sop_architecture_assessment.md": "02_sop_authoring/sop_architecture_assessment.md",
+    "04_value_statement.md": f"{ACCELERATOR_ASSET_DIR}/04_value_statement.md",
+    "05_use_case_summary.md": f"{ACCELERATOR_ASSET_DIR}/05_use_case_summary.md",
+    "06_case_study_skeleton.md": f"{ACCELERATOR_ASSET_DIR}/06_case_study_skeleton.md",
+    "07_accelerator_101.md": f"{ACCELERATOR_ASSET_DIR}/07_accelerator_101.md",
+    "08_accelerator_102.md": f"{ACCELERATOR_ASSET_DIR}/08_accelerator_102.md",
+    "09_accelerator_201.md": f"{ACCELERATOR_ASSET_DIR}/09_accelerator_201.md",
+    PEER_REVIEW_STATUS_ARTIFACT: f"{ACCELERATOR_ASSET_DIR}/peer_review_status.json",
+    WORKFLOW_PROMPT_ARTIFACT: f"{WORKFLOW_STATUS_DIR}/codex_workflow_build_prompt.md",
+    WORKFLOW_HELPER_ARTIFACT: f"{WORKFLOW_STATUS_DIR}/START_CODEX_WORKFLOW_BUILD.ps1",
+    WORKFLOW_MANIFEST_ARTIFACT: f"{WORKFLOW_STATUS_DIR}/workflow_build_manifest.json",
+    LEGACY_PROMPT_ARTIFACT: f"{WORKFLOW_STATUS_DIR}/next_stage_prompt.md",
+    PIPELINE_STATUS_ARTIFACT: f"{WORKFLOW_STATUS_DIR}/pipeline_status.json",
+    PIPELINE_LOG_ARTIFACT: f"{WORKFLOW_STATUS_DIR}/pipeline_log.md",
+}
+
 PROJECT_FOLDERS = [
-    "docs",
-    "data/raw",
+    *JON_PROCESS_FOLDERS,
+    "03_workflow_build/status",
+    "03_workflow_build/workflows",
+    "03_workflow_build/validation",
+    "04_reference_examples/accelerator_assets",
+    "data/raw/transcripts",
     "data/generated",
-    "status",
     "tooling",
-    "workflows",
-    "validation",
 ]
 
 VISIBLE_ARTIFACTS = [
@@ -558,6 +594,7 @@ def manifest_path(run_id: str) -> Path:
 def ensure_project_structure(project_dir: Path) -> None:
     for folder in PROJECT_FOLDERS:
         (project_dir / folder).mkdir(parents=True, exist_ok=True)
+    _sync_process_pack_scaffold(project_dir)
     _sync_project_tooling(project_dir)
 
 
@@ -589,10 +626,24 @@ def _sync_project_tooling(project_dir: Path) -> None:
     _copytree_fresh(TOOLING_DIR / "alteryx-beautification", tooling_target / "alteryx-beautification")
 
 
+def _sync_process_pack_scaffold(project_dir: Path) -> None:
+    """Seed Jon's operating-system folders without replacing generated run files."""
+    for folder in JON_PROCESS_FOLDERS:
+        _copytree_fresh(PROCESS_PACK_DIR / folder, project_dir / folder)
+    if (PROCESS_PACK_DIR / "README.md").exists():
+        start_here = project_dir / "00_start_here"
+        start_here.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(PROCESS_PACK_DIR / "README.md", start_here / "README_process_pack.md")
+
+
 def _artifact_path(project_dir: Path, artifact: str) -> Path:
-    if artifact.startswith("status/"):
-        return project_dir / artifact
-    return project_dir / "docs" / artifact
+    normalized = artifact.replace("\\", "/")
+    mapped = ARTIFACT_PATHS.get(normalized)
+    if mapped:
+        return project_dir / mapped
+    if normalized.startswith("status/"):
+        return project_dir / WORKFLOW_STATUS_DIR / normalized.removeprefix("status/")
+    return project_dir / normalized
 
 
 def _artifact_record(project_dir: Path, artifact: str) -> dict[str, Any]:
@@ -731,7 +782,7 @@ def new_manifest(customer_name: str, project_name: str, csm_name: str, sections:
         "transcript": {
             "source_path": "",
             "stored_path": "",
-            "canonical_path": str(project_dir / "docs" / "01_customer_discovery_conversation.md"),
+            "canonical_path": str(_artifact_path(project_dir, "01_customer_discovery_conversation.md")),
             "characters": 0,
             "analyzed_at": "",
         },
@@ -937,7 +988,7 @@ def _combined_transcript_text(manifest: dict[str, Any]) -> str:
 
 def _refresh_canonical_transcript(manifest: dict[str, Any]) -> str:
     project_dir = run_dir(manifest["run_id"])
-    canonical = project_dir / "docs" / "01_customer_discovery_conversation.md"
+    canonical = _artifact_path(project_dir, "01_customer_discovery_conversation.md")
     canonical.parent.mkdir(parents=True, exist_ok=True)
     transcript_text = _combined_transcript_text(manifest)
     records = _transcript_records(manifest)
@@ -1025,7 +1076,6 @@ def attach_uploaded_transcript(
 
 def calculate_readiness(manifest: dict[str, Any], sections: list[Section]) -> dict[str, Any]:
     capture = manifest.get("capture", {})
-    analysis = manifest.get("analysis", {})
     required_sections = [section for section in sections if section.id in REQUIRED_FOR_SOP_GATE]
 
     capture_weights = {
@@ -1035,14 +1085,6 @@ def calculate_readiness(manifest: dict[str, Any], sections: list[Section]) -> di
         "not_answered": 0.0,
         "not_set": 0.0,
     }
-    evidence_weights = {
-        "supported": 1.0,
-        "weak_evidence": 0.55,
-        "missing": 0.0,
-        "conflicting": 0.0,
-        "not_run": 0.0,
-    }
-
     def avg(values: list[float]) -> int:
         return round((sum(values) / len(values)) * 100) if values else 0
 
@@ -1056,7 +1098,6 @@ def calculate_readiness(manifest: dict[str, Any], sections: list[Section]) -> di
     generation_missing: list[str] = []
     for section in required_sections:
         item = capture.get(section.id, {})
-        evidence_status = analysis.get(section.id, {}).get("status", "not_run")
         capture_status = item.get("status", "not_set")
         if capture_status == "not_set":
             message = f"{section.label}: status not selected."
@@ -1067,10 +1108,6 @@ def calculate_readiness(manifest: dict[str, Any], sections: list[Section]) -> di
             message = f"{section.label}: capture is {CAPTURE_STATUSES.get(capture_status, 'Not answered')}."
             blockers.append(message)
             blocker_items.append({"message": message, "section_id": section.id, "kind": "capture"})
-        if evidence_status in {"missing", "conflicting", "not_run"}:
-            message = f"{section.label}: transcript answer is {EVIDENCE_STATUSES.get(evidence_status, 'Not answered by transcript')}."
-            blockers.append(message)
-            blocker_items.append({"message": message, "section_id": section.id, "kind": "evidence"})
         if not item.get("approved"):
             message = f"{section.label}: CSM approval is pending."
             blockers.append(message)
@@ -1126,7 +1163,7 @@ def _confirmed_sections(manifest: dict[str, Any], sections: list[Section]) -> li
         section
         for section in sections
         if manifest.get("capture", {}).get(section.id, {}).get("approved")
-        and manifest.get("analysis", {}).get(section.id, {}).get("status") in {"supported", "weak_evidence"}
+        and manifest.get("capture", {}).get(section.id, {}).get("status") in {"answered", "partial"}
     ]
 
 
@@ -1140,7 +1177,6 @@ def _gap_rows(manifest: dict[str, Any], sections: list[Section]) -> list[dict[st
         is_required = section.id in REQUIRED_FOR_SOP_GATE
         if (
             capture_status in {"not_set", "not_answered", "needs_follow_up"}
-            or evidence_status in {"missing", "conflicting", "not_run"}
             or (is_required and not capture_item.get("approved"))
         ):
             rows.append(
@@ -1445,8 +1481,20 @@ def detect_workflow_environment() -> dict[str, Any]:
     )
     builder_root = TOOLING_DIR / "alteryx_workflow_builder"
     beautification_root = TOOLING_DIR / "alteryx-beautification"
-    builder_ready = (builder_root / "verify_workflows.py").exists() and (builder_root / "WORKFLOW_RULES.md").exists()
-    beautification_ready = (beautification_root / "SKILL.md").exists() and (beautification_root / "references" / "spiderweb-reduction.md").exists()
+    hybrid_builder_reference = builder_root / "golden" / "customer_facing_hybrid_reference" / "10_REFERENCE_customer_facing_hybrid.yxmd"
+    hybrid_beauty_profile = beautification_root / "references" / "customer-facing-hybrid-profile.md"
+    hybrid_beauty_reference = beautification_root / "assets" / "customer-facing-hybrid-reference.yxmd"
+    builder_ready = (
+        (builder_root / "verify_workflows.py").exists()
+        and (builder_root / "WORKFLOW_RULES.md").exists()
+        and hybrid_builder_reference.exists()
+    )
+    beautification_ready = (
+        (beautification_root / "SKILL.md").exists()
+        and (beautification_root / "references" / "spiderweb-reduction.md").exists()
+        and hybrid_beauty_profile.exists()
+        and hybrid_beauty_reference.exists()
+    )
     return {
         "codex_detected": bool(codex_path),
         "codex_path": codex_path,
@@ -1465,19 +1513,22 @@ def detect_workflow_environment() -> dict[str, Any]:
 def detect_workflow_artifacts(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     project_dir = run_dir(manifest["run_id"])
     candidates: list[Path] = []
-    workflow_dir = project_dir / "workflows"
-    validation_dir = project_dir / "validation"
-    status_dir = project_dir / "status"
-    if workflow_dir.exists():
-        for pattern in ["*.yxmd", "*.yxmc", "*.yxwz", "*.yxzp", "*.png", "*.json", "*.md", "*.csv", "*.xlsx"]:
-            candidates.extend(workflow_dir.rglob(pattern))
-    if validation_dir.exists():
-        for pattern in ["*.png", "*.json", "*.md", "*.csv", "*.xlsx", "*.txt"]:
-            candidates.extend(validation_dir.rglob(pattern))
-    for status_name in ["workflow_spec.json", "validation_report.json", "lint_report.json", "runtime_smoke_results.json"]:
-        status_path = status_dir / status_name
-        if status_path.exists():
-            candidates.append(status_path)
+    workflow_dirs = [project_dir / WORKFLOW_OUTPUT_DIR, project_dir / "workflows"]
+    validation_dirs = [project_dir / WORKFLOW_VALIDATION_DIR, project_dir / "validation"]
+    status_dirs = [project_dir / WORKFLOW_STATUS_DIR, project_dir / "status"]
+    for workflow_dir in workflow_dirs:
+        if workflow_dir.exists():
+            for pattern in ["*.yxmd", "*.yxmc", "*.yxwz", "*.yxzp", "*.png", "*.json", "*.md", "*.csv", "*.xlsx"]:
+                candidates.extend(workflow_dir.rglob(pattern))
+    for validation_dir in validation_dirs:
+        if validation_dir.exists():
+            for pattern in ["*.png", "*.json", "*.md", "*.csv", "*.xlsx", "*.txt"]:
+                candidates.extend(validation_dir.rglob(pattern))
+    for status_dir in status_dirs:
+        for status_name in ["workflow_spec.json", "validation_report.json", "lint_report.json", "runtime_smoke_results.json"]:
+            status_path = status_dir / status_name
+            if status_path.exists():
+                candidates.append(status_path)
 
     seen: set[Path] = set()
     artifacts: list[dict[str, Any]] = []
@@ -1573,10 +1624,10 @@ def _pipeline_status(manifest: dict[str, Any], readiness: dict[str, Any]) -> dic
 
 def _write_peer_review_status(manifest: dict[str, Any], readiness: dict[str, Any]) -> dict[str, Any]:
     project_dir = run_dir(manifest["run_id"])
-    status_path = project_dir / PEER_REVIEW_STATUS_ARTIFACT
+    status_path = _artifact_path(project_dir, PEER_REVIEW_STATUS_ARTIFACT)
     status_path.parent.mkdir(parents=True, exist_ok=True)
     existing_state = manifest.get("peer_review", {}).get("state", "draft")
-    all_assets_exist = all((project_dir / "docs" / artifact).exists() for artifact in ACCELERATOR_ASSET_ARTIFACTS)
+    all_assets_exist = all(_artifact_path(project_dir, artifact).exists() for artifact in ACCELERATOR_ASSET_ARTIFACTS)
     if existing_state in {"reviewed", "published"}:
         state = existing_state
     elif readiness["workflow_gate"] == "ready" and all_assets_exist:
@@ -1627,38 +1678,43 @@ def _workflow_handoff_prompt(manifest: dict[str, Any], readiness: dict[str, Any]
     large_prompt = LARGE_PROMPT_PATH.read_text(encoding="utf-8") if LARGE_PROMPT_PATH.exists() else "Large prompt pack is missing from the process pack."
     large_prompt = _sanitize_large_prompt_for_handoff(large_prompt)
     project_dir = run_dir(manifest["run_id"])
-    docs_dir = project_dir / "docs"
     identity = manifest.get("project_identity", {})
     identity_hash = identity.get("identity_hash", "")
     state = "READY" if readiness["workflow_gate"] == "ready" else "BLOCKED"
     blockers = "\n".join(f"- {blocker}" for blocker in readiness["blockers"]) or "- None"
     builder_path = project_dir / "tooling" / "alteryx_workflow_builder"
     beautification_path = project_dir / "tooling" / "alteryx-beautification"
+    hybrid_builder_reference = builder_path / "golden" / "customer_facing_hybrid_reference" / "10_REFERENCE_customer_facing_hybrid.yxmd"
+    hybrid_beauty_profile = beautification_path / "references" / "customer-facing-hybrid-profile.md"
+    hybrid_beauty_reference = beautification_path / "assets" / "customer-facing-hybrid-reference.yxmd"
     transcript_count = manifest.get("transcript", {}).get("source_count", len(_transcript_records(manifest)))
     case_inputs = {
         "Canonical project root": str(project_dir),
         "Project ID": manifest["run_id"],
         "Project identity hash": identity_hash,
         "Project manifest": str(project_dir / "manifest.json"),
-        "Discovery conversation": _relative_to_project(project_dir, docs_dir / "01_customer_discovery_conversation.md"),
-        "Guided SOP capture": _relative_to_project(project_dir, docs_dir / "02_guided_sop_capture.md"),
-        "Accelerator SOP": _relative_to_project(project_dir, docs_dir / "03_accelerator_sop.md"),
-        "Gap log": _relative_to_project(project_dir, docs_dir / "sop_gap_log.md"),
-        "Architecture assessment": _relative_to_project(project_dir, docs_dir / "sop_architecture_assessment.md"),
-        "Value statement": _relative_to_project(project_dir, docs_dir / "04_value_statement.md"),
-        "Use-case summary": _relative_to_project(project_dir, docs_dir / "05_use_case_summary.md"),
-        "Case-study skeleton": _relative_to_project(project_dir, docs_dir / "06_case_study_skeleton.md"),
-        "Accelerator 101": _relative_to_project(project_dir, docs_dir / "07_accelerator_101.md"),
-        "Accelerator 102": _relative_to_project(project_dir, docs_dir / "08_accelerator_102.md"),
-        "Accelerator 201": _relative_to_project(project_dir, docs_dir / "09_accelerator_201.md"),
-        "Peer-review status": PEER_REVIEW_STATUS_ARTIFACT,
+        "Discovery conversation": _relative_to_project(project_dir, _artifact_path(project_dir, "01_customer_discovery_conversation.md")),
+        "Guided SOP capture": _relative_to_project(project_dir, _artifact_path(project_dir, "02_guided_sop_capture.md")),
+        "Accelerator SOP": _relative_to_project(project_dir, _artifact_path(project_dir, "03_accelerator_sop.md")),
+        "Gap log": _relative_to_project(project_dir, _artifact_path(project_dir, "sop_gap_log.md")),
+        "Architecture assessment": _relative_to_project(project_dir, _artifact_path(project_dir, "sop_architecture_assessment.md")),
+        "Value statement": _relative_to_project(project_dir, _artifact_path(project_dir, "04_value_statement.md")),
+        "Use-case summary": _relative_to_project(project_dir, _artifact_path(project_dir, "05_use_case_summary.md")),
+        "Case-study skeleton": _relative_to_project(project_dir, _artifact_path(project_dir, "06_case_study_skeleton.md")),
+        "Accelerator 101": _relative_to_project(project_dir, _artifact_path(project_dir, "07_accelerator_101.md")),
+        "Accelerator 102": _relative_to_project(project_dir, _artifact_path(project_dir, "08_accelerator_102.md")),
+        "Accelerator 201": _relative_to_project(project_dir, _artifact_path(project_dir, "09_accelerator_201.md")),
+        "Peer-review status": _relative_to_project(project_dir, _artifact_path(project_dir, PEER_REVIEW_STATUS_ARTIFACT)),
         "Raw transcript folder": "data/raw/transcripts",
         "Generated data folder": "data/generated",
-        "Workflow output folder": "workflows",
-        "Validation output folder": "validation",
-        "Workflow build manifest": WORKFLOW_MANIFEST_ARTIFACT,
+        "Workflow output folder": WORKFLOW_OUTPUT_DIR,
+        "Validation output folder": WORKFLOW_VALIDATION_DIR,
+        "Workflow build manifest": _relative_to_project(project_dir, _artifact_path(project_dir, WORKFLOW_MANIFEST_ARTIFACT)),
         "Alteryx workflow-builder toolkit": _relative_to_project(project_dir, builder_path),
+        "Hybrid workflow reference": _relative_to_project(project_dir, hybrid_builder_reference),
         "Beautification rules": _relative_to_project(project_dir, beautification_path),
+        "Hybrid beautification profile": _relative_to_project(project_dir, hybrid_beauty_profile),
+        "Hybrid beautification reference": _relative_to_project(project_dir, hybrid_beauty_reference),
         "Transcript source count": str(transcript_count),
         "Reusable Large prompt source": str(LARGE_PROMPT_PATH),
     }
@@ -1687,8 +1743,8 @@ Before doing any workflow design or file search, prove that you are in the corre
 
 1. Resolve the current working directory and compare it to the canonical project root above.
 2. Read `manifest.json` from the canonical project root and confirm `run_id` equals `{manifest['run_id']}`.
-3. Read `{WORKFLOW_MANIFEST_ARTIFACT}` and confirm `project_identity_hash` equals `{identity_hash}`.
-4. Confirm `docs/01_customer_discovery_conversation.md`, `docs/02_guided_sop_capture.md`, `docs/03_accelerator_sop.md`, and `status/workflow_build_manifest.json` exist under the canonical project root.
+3. Read `{ARTIFACT_PATHS[WORKFLOW_MANIFEST_ARTIFACT]}` and confirm `project_identity_hash` equals `{identity_hash}`.
+4. Confirm `01_discovery/01_customer_discovery_conversation.md`, `02_sop_authoring/02_guided_sop_capture.md`, `02_sop_authoring/03_accelerator_sop.md`, and `{ARTIFACT_PATHS[WORKFLOW_MANIFEST_ARTIFACT]}` exist under the canonical project root.
 5. If any identity, path, or SOP-gate check fails, stop. Do not search parent folders, sibling projects, demo folders, shelf projects, Downloads, or customer folders as fallbacks.
 
 ## Operating Mode
@@ -1700,6 +1756,7 @@ You are Codex running locally with access to this project folder. Build the Alte
 - Keep all generated assets inside this project folder. Do not reference customer source folders or external systems.
 - Use sanitized/sample data only unless the user explicitly provides approved local inputs.
 - Treat bundled demo transcripts as demo/training context only. Never substitute another nearby accelerator project when this project's files are missing.
+- Treat the Jon folder chain as the workflow source of truth. The transcript corpus is raw evidence; do not bypass the approved SOP/doc chain and build directly from transcript text.
 - Use the value statement, use-case summary, case-study skeleton, and 101/102/201 drafts as supporting context. They should improve narrative alignment, but customer-facing polish must not block the workflow build if the SOP gate is ready.
 
 ## Case Inputs
@@ -1720,17 +1777,18 @@ Apply the bundled Alteryx beautification rules as build requirements, not as opt
 
 - Use a title-first canvas with a clear left-to-right narrative.
 - Place every real tool inside a contextual container with compact, useful annotations.
+- Use the bundled customer-facing hybrid reference workflow and profile as the visual standard: top title/banner, clean tool lane, bottom documentation shelf, contextual colored containers, and minimal visual clutter.
 - Apply aggressive spiderweb reduction: minimize connector crossings, avoid crowded fan-in knots, separate branch lanes, and reroute geometry until the rendered workflow reads cleanly.
 - Prefer readability over blind tool-count minimization. Condense only where it improves both maintainability and visual scanability.
 - Render the workflow preview and iterate until the canvas is clean, balanced, readable, and package-safe.
 
 ## Expected Build Outputs
 
-- `workflows/main.yxmd` or a clearly named first-slice `.yxmd`.
+- `{WORKFLOW_OUTPUT_DIR}/main.yxmd` or a clearly named first-slice `.yxmd`.
 - Supporting macros only if they materially improve reuse.
 - Synthetic/sample input data under `data/generated`.
-- Validation outputs under `validation`.
-- `status/workflow_spec.json` describing the built workflow.
+- Validation outputs under `{WORKFLOW_VALIDATION_DIR}`.
+- `{WORKFLOW_STATUS_DIR}/workflow_spec.json` describing the built workflow.
 - Rendered preview images proving the workflow is visually reviewable.
 - Updated gap/architecture notes if the SOP was insufficient for implementation.
 
@@ -1755,7 +1813,7 @@ $ExpectedProjectRoot = @'
 __PROJECT_ROOT__
 '@
 $ProjectRoot = (Resolve-Path -LiteralPath $ExpectedProjectRoot).Path
-$StatusDir = Join-Path $ProjectRoot "status"
+$StatusDir = Join-Path $ProjectRoot "03_workflow_build\\status"
 $PromptPath = Join-Path $StatusDir "codex_workflow_build_prompt.md"
 $BuildManifestPath = Join-Path $StatusDir "workflow_build_manifest.json"
 $ProjectManifestPath = Join-Path $ProjectRoot "manifest.json"
@@ -1814,17 +1872,17 @@ def generate_workflow_build_handoff(
 ) -> dict[str, Any]:
     project_dir = run_dir(manifest["run_id"])
     ensure_project_structure(project_dir)
-    status_dir = project_dir / "status"
+    status_dir = project_dir / WORKFLOW_STATUS_DIR
     status_dir.mkdir(parents=True, exist_ok=True)
     readiness = readiness or calculate_readiness(_refresh_artifact_records(manifest), sections)
     preflight = detect_workflow_environment()
-    prompt_path = project_dir / WORKFLOW_PROMPT_ARTIFACT
-    helper_path = project_dir / WORKFLOW_HELPER_ARTIFACT
-    build_manifest_path = project_dir / WORKFLOW_MANIFEST_ARTIFACT
+    prompt_path = _artifact_path(project_dir, WORKFLOW_PROMPT_ARTIFACT)
+    helper_path = _artifact_path(project_dir, WORKFLOW_HELPER_ARTIFACT)
+    build_manifest_path = _artifact_path(project_dir, WORKFLOW_MANIFEST_ARTIFACT)
     prompt = _workflow_handoff_prompt(manifest, readiness, preflight)
 
     prompt_path.write_text(prompt, encoding="utf-8")
-    (project_dir / LEGACY_PROMPT_ARTIFACT).write_text(prompt, encoding="utf-8")
+    _artifact_path(project_dir, LEGACY_PROMPT_ARTIFACT).write_text(prompt, encoding="utf-8")
     helper_path.write_text(_workflow_helper_script(manifest), encoding="utf-8")
 
     build_manifest = {
@@ -1837,40 +1895,47 @@ def generate_workflow_build_handoff(
         "project_name": manifest["project_name"],
         "state": readiness["workflow_gate"],
         "case_inputs": {
-            "docs": "docs",
+            "discovery": "01_discovery",
+            "sop_authoring": "02_sop_authoring",
+            "workflow_build": "03_workflow_build",
+            "reference_examples": "04_reference_examples",
+            "sequencer": "sequencer",
             "data_raw": "data/raw",
             "data_generated": "data/generated",
-            "status": "status",
-            "workflows": "workflows",
-            "validation": "validation",
+            "status": WORKFLOW_STATUS_DIR,
+            "workflows": WORKFLOW_OUTPUT_DIR,
+            "validation": WORKFLOW_VALIDATION_DIR,
             "prompt": WORKFLOW_PROMPT_ARTIFACT,
             "helper": WORKFLOW_HELPER_ARTIFACT,
             "project_manifest": "manifest.json",
-            "value_statement": "docs/04_value_statement.md",
-            "use_case_summary": "docs/05_use_case_summary.md",
-            "case_study_skeleton": "docs/06_case_study_skeleton.md",
-            "accelerator_101": "docs/07_accelerator_101.md",
-            "accelerator_102": "docs/08_accelerator_102.md",
-            "accelerator_201": "docs/09_accelerator_201.md",
-            "peer_review_status": PEER_REVIEW_STATUS_ARTIFACT,
+            "accelerator_sop": ARTIFACT_PATHS["03_accelerator_sop.md"],
+            "value_statement": ARTIFACT_PATHS["04_value_statement.md"],
+            "use_case_summary": ARTIFACT_PATHS["05_use_case_summary.md"],
+            "case_study_skeleton": ARTIFACT_PATHS["06_case_study_skeleton.md"],
+            "accelerator_101": ARTIFACT_PATHS["07_accelerator_101.md"],
+            "accelerator_102": ARTIFACT_PATHS["08_accelerator_102.md"],
+            "accelerator_201": ARTIFACT_PATHS["09_accelerator_201.md"],
+            "peer_review_status": ARTIFACT_PATHS[PEER_REVIEW_STATUS_ARTIFACT],
         },
         "absolute_case_inputs": {
             "project_root": str(project_dir),
             "project_manifest": str(project_dir / "manifest.json"),
             "workflow_build_manifest": str(build_manifest_path),
             "prompt": str(prompt_path),
-            "docs": str(project_dir / "docs"),
-            "workflows": str(project_dir / "workflows"),
-            "validation": str(project_dir / "validation"),
+            "discovery": str(project_dir / "01_discovery"),
+            "sop_authoring": str(project_dir / "02_sop_authoring"),
+            "workflow_build": str(project_dir / "03_workflow_build"),
+            "workflows": str(project_dir / WORKFLOW_OUTPUT_DIR),
+            "validation": str(project_dir / WORKFLOW_VALIDATION_DIR),
         },
         "transcripts": manifest.get("transcripts", []),
         "demo_mode": manifest.get("transcript", {}).get("demo_mode", False),
         "preflight": preflight,
         "expected_outputs": [
-            "workflows/main.yxmd",
-            "status/workflow_spec.json",
-            "validation/validation_report.json",
-            "validation/workflow_preview.png",
+            f"{WORKFLOW_OUTPUT_DIR}/main.yxmd",
+            f"{WORKFLOW_STATUS_DIR}/workflow_spec.json",
+            f"{WORKFLOW_VALIDATION_DIR}/validation_report.json",
+            f"{WORKFLOW_VALIDATION_DIR}/workflow_preview.png",
         ],
         "blockers": readiness["blockers"],
         "notes": "Codex is the workflow-building brain. The cockpit prepares context, prompts, tooling, and gates.",
@@ -1898,8 +1963,7 @@ def generate_workflow_build_handoff(
 def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str, Any]:
     project_dir = run_dir(manifest["run_id"])
     ensure_project_structure(project_dir)
-    docs_dir = project_dir / "docs"
-    status_dir = project_dir / "status"
+    status_dir = project_dir / WORKFLOW_STATUS_DIR
     readiness = calculate_readiness(_refresh_artifact_records(manifest), sections)
     confirmed = _confirmed_sections(manifest, sections)
     gap_rows = _gap_rows(manifest, sections)
@@ -2013,7 +2077,8 @@ def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str
     content_by_name.update(_asset_content_by_name(manifest, common_header))
 
     for name, content in content_by_name.items():
-        path = docs_dir / name
+        path = _artifact_path(project_dir, name)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         manifest.setdefault("artifacts", {}).setdefault(name, {})
         manifest["artifacts"][name].update(
@@ -2031,8 +2096,9 @@ def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str
     refreshed_readiness = calculate_readiness(_refresh_artifact_records(manifest), sections)
     manifest = generate_workflow_build_handoff(manifest, sections, refreshed_readiness)
     status = _pipeline_status(manifest, refreshed_readiness)
-    (status_dir / PIPELINE_STATUS_ARTIFACT.removeprefix("status/")).write_text(json.dumps(status, indent=2), encoding="utf-8")
-    (status_dir / "pipeline_log.md").write_text(
+    status_dir.mkdir(parents=True, exist_ok=True)
+    _artifact_path(project_dir, PIPELINE_STATUS_ARTIFACT).write_text(json.dumps(status, indent=2), encoding="utf-8")
+    _artifact_path(project_dir, PIPELINE_LOG_ARTIFACT).write_text(
         f"# Pipeline Log\n\n- {utc_now()}: Generated cockpit document chain. Workflow gate: {refreshed_readiness['workflow_gate']}.\n",
         encoding="utf-8",
     )
@@ -2084,7 +2150,19 @@ def launch_codex_for_run(manifest: dict[str, Any], sections: list[Section]) -> d
 
 
 def open_project_subfolder(manifest: dict[str, Any], subfolder: str) -> None:
-    allowed = {"project": ".", "docs": "docs", "workflows": "workflows", "status": "status", "validation": "validation"}
+    allowed = {
+        "project": ".",
+        "start_here": "00_start_here",
+        "discovery": "01_discovery",
+        "sop_authoring": "02_sop_authoring",
+        "workflow_build": "03_workflow_build",
+        "reference_examples": "04_reference_examples",
+        "sequencer": "sequencer",
+        "docs": "02_sop_authoring",
+        "workflows": WORKFLOW_OUTPUT_DIR,
+        "status": WORKFLOW_STATUS_DIR,
+        "validation": WORKFLOW_VALIDATION_DIR,
+    }
     relative = allowed.get(subfolder)
     if relative is None:
         raise ValueError("Unsupported folder target.")
@@ -2098,10 +2176,10 @@ def open_project_subfolder(manifest: dict[str, Any], subfolder: str) -> None:
 
 
 def sync_generated_docs(manifest: dict[str, Any]) -> dict[str, Any]:
-    docs_dir = run_dir(manifest["run_id"]) / "docs"
     STARTER_DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    project_dir = run_dir(manifest["run_id"])
     for name in DOC_ARTIFACTS:
-        source = docs_dir / name
+        source = _artifact_path(project_dir, name)
         if source.exists():
             shutil.copy2(source, STARTER_DOCS_DIR / name)
     manifest["sync"]["synced_at"] = utc_now()

@@ -22,5 +22,18 @@ Forbidden variations:
 
 Always validate after editing:
 ```bash
-python verify_workflows.py --dirs starter_kits/
+python3 verify_workflows.py --dirs starter_kits/
 ```
+
+## Tier-2 Native Templates
+
+The following templates provide deterministic native emits for the tier-2 robustness set:
+- `datetime.xml`
+- `text_to_columns.xml`
+- `multi_row_formula.xml`
+- `cross_tab.xml`
+- `transpose.xml`
+- `sample.xml`
+- `data_cleansing.xml`
+- `record_id.xml`
+- `browse.xml`

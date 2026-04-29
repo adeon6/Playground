@@ -1,0 +1,876 @@
+<?xml version="1.0"?>
+<AlteryxDocument yxmdVer="2025.1">
+  <Nodes>
+    <Node ToolID="1">
+      <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+        <Position x="40" y="28" width="660" height="118" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Text>Customer-Facing Alteryx Workflow
+Revenue Risk Prioritization</Text>
+          <Font name="Segoe UI" size="20" style="0" />
+          <TextColor r="255" g="255" b="255" />
+          <FillColor r="13" g="35" b="69" />
+          <Shape shape="0" />
+          <Justification Justification="0" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+    </Node>
+    <Node ToolID="2">
+      <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+        <Position x="700" y="28" width="1010" height="118" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Text>Blend order activity, product attributes, and regional service targets
+into a reusable action view.
+The workflow identifies revenue at risk, summarizes high-priority regions,
+and publishes review-ready outputs for operations and customer success.</Text>
+          <Font name="Segoe UI" size="9.5" style="0" />
+          <TextColor r="255" g="255" b="255" />
+          <FillColor r="13" g="35" b="69" />
+          <Shape shape="0" />
+          <Justification Justification="0" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+    </Node>
+    <Node ToolID="10">
+      <GuiSettings Plugin="AlteryxGuiToolkit.ToolContainer.ToolContainer">
+        <Position x="40" y="220" width="220" height="420" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Caption>1. Source Inputs</Caption>
+          <Style TextColor="#0b2140" FillColor="#e8f4f0" BorderColor="#17856f" Transparency="18" Margin="10" />
+          <Disabled value="False" />
+          <Folded value="False" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <ChildNodes>
+        <Node ToolID="11">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.DbFileInput.DbFileInput">
+            <Position x="80" y="285" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <File OutputFileName="" FileFormat="0" SearchSubDirs="False" RecordLimit="">.\data\inputs\sales_orders.csv</File>
+              <FormatSpecificOptions>
+                <Delimeter>,</Delimeter>
+                <FieldLen>254</FieldLen>
+                <HeaderRow>True</HeaderRow>
+                <IgnoreErrors>False</IgnoreErrors>
+              </FormatSpecificOptions>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Sales orders</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxDbFileInput" />
+        </Node>
+        <Node ToolID="12">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.DbFileInput.DbFileInput">
+            <Position x="80" y="415" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <File OutputFileName="" FileFormat="0" SearchSubDirs="False" RecordLimit="">.\data\inputs\product_master.csv</File>
+              <FormatSpecificOptions>
+                <Delimeter>,</Delimeter>
+                <FieldLen>254</FieldLen>
+                <HeaderRow>True</HeaderRow>
+                <IgnoreErrors>False</IgnoreErrors>
+              </FormatSpecificOptions>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Product master</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxDbFileInput" />
+        </Node>
+        <Node ToolID="13">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.DbFileInput.DbFileInput">
+            <Position x="80" y="545" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <File OutputFileName="" FileFormat="0" SearchSubDirs="False" RecordLimit="">.\data\inputs\service_targets.csv</File>
+              <FormatSpecificOptions>
+                <Delimeter>,</Delimeter>
+                <FieldLen>254</FieldLen>
+                <HeaderRow>True</HeaderRow>
+                <IgnoreErrors>False</IgnoreErrors>
+              </FormatSpecificOptions>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Service targets</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxDbFileInput" />
+        </Node>
+      </ChildNodes>
+    </Node>
+    <Node ToolID="20">
+      <GuiSettings Plugin="AlteryxGuiToolkit.ToolContainer.ToolContainer">
+        <Position x="300" y="200" width="430" height="470" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Caption>2. Prepare And Normalize</Caption>
+          <Style TextColor="#0b2140" FillColor="#edf4ff" BorderColor="#3378c2" Transparency="18" Margin="10" />
+          <Disabled value="False" />
+          <Folded value="False" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <ChildNodes>
+        <Node ToolID="21">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.AlteryxSelect.AlteryxSelect">
+            <Position x="340" y="285" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <OrderChanged value="False" />
+              <CommaDecimal value="False" />
+              <SelectFields>
+                <SelectField field="OrderID" selected="True" />
+                <SelectField field="CustomerID" selected="True" />
+                <SelectField field="ProductID" selected="True" />
+                <SelectField field="Region" selected="True" />
+                <SelectField field="OrderDate" selected="True" />
+                <SelectField field="Revenue" selected="True" />
+                <SelectField field="Units" selected="True" />
+                <SelectField field="DaysToShip" selected="True" />
+                <SelectField field="*Unknown" selected="False" />
+              </SelectFields>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Keep order fields</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxSelect" />
+        </Node>
+        <Node ToolID="22">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.Formula.Formula">
+            <Position x="500" y="285" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <FormulaFields>
+                <FormulaField field="RevenueNum" type="Double" size="255" expression="ToNumber([Revenue])" />
+                <FormulaField field="UnitsNum" type="Int32" size="255" expression="ToNumber([Units])" />
+                <FormulaField field="DaysToShipNum" type="Int32" size="255" expression="ToNumber([DaysToShip])" />
+              </FormulaFields>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Cast order numerics</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxFormula" />
+        </Node>
+        <Node ToolID="23">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.AlteryxSelect.AlteryxSelect">
+            <Position x="340" y="415" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <OrderChanged value="False" />
+              <CommaDecimal value="False" />
+              <SelectFields>
+                <SelectField field="ProductID" selected="True" />
+                <SelectField field="ProductName" selected="True" />
+                <SelectField field="Category" selected="True" />
+                <SelectField field="GrossMarginPct" selected="True" />
+                <SelectField field="StrategicFlag" selected="True" />
+                <SelectField field="*Unknown" selected="False" />
+              </SelectFields>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Keep product fields</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxSelect" />
+        </Node>
+        <Node ToolID="24">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.Formula.Formula">
+            <Position x="500" y="415" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <FormulaFields>
+                <FormulaField field="MarginBand" type="V_WString" size="32" expression="IIF(ToNumber([GrossMarginPct]) &gt;= 0.35, &quot;Premium&quot;, IIF(ToNumber([GrossMarginPct]) &gt;= 0.25, &quot;Standard&quot;, &quot;Thin&quot;))" />
+                <FormulaField field="StrategicFlagText" type="V_WString" size="8" expression="IIF([StrategicFlag] = &quot;Y&quot;, &quot;Yes&quot;, &quot;No&quot;)" />
+              </FormulaFields>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Classify margin</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxFormula" />
+        </Node>
+        <Node ToolID="25">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.AlteryxSelect.AlteryxSelect">
+            <Position x="500" y="545" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <OrderChanged value="False" />
+              <CommaDecimal value="False" />
+              <SelectFields>
+                <SelectField field="Region" selected="True" />
+                <SelectField field="TargetShipDays" selected="True" />
+                <SelectField field="TargetMarginPct" selected="True" />
+                <SelectField field="ExecutiveOwner" selected="True" />
+                <SelectField field="*Unknown" selected="False" />
+              </SelectFields>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Keep target fields</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxSelect" />
+        </Node>
+      </ChildNodes>
+    </Node>
+    <Node ToolID="30">
+      <GuiSettings Plugin="AlteryxGuiToolkit.ToolContainer.ToolContainer">
+        <Position x="750" y="285" width="330" height="280" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Caption>3. Blend Reference Data</Caption>
+          <Style TextColor="#0b2140" FillColor="#f0eafd" BorderColor="#684aa8" Transparency="18" Margin="10" />
+          <Disabled value="False" />
+          <Folded value="False" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <ChildNodes>
+        <Node ToolID="31">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.Join.Join">
+            <Position x="765" y="350" />
+          </GuiSettings>
+          <Properties>
+            <Configuration joinByRecordPos="False">
+              <JoinInfo connection="Left">
+                <Field field="ProductID" />
+              </JoinInfo>
+              <JoinInfo connection="Right">
+                <Field field="ProductID" />
+              </JoinInfo>
+              <SelectConfiguration>
+                <Configuration outputConnection="Join">
+                  <OrderChanged value="False" />
+                  <CommaDecimal value="False" />
+                  <SelectFields>
+                    <SelectField field="Right_ProductID" selected="False" rename="Right_ProductID" />
+                    <SelectField field="Right_Region" selected="False" rename="Right_Region" />
+                    <SelectField field="*Unknown" selected="True" />
+                  </SelectFields>
+                </Configuration>
+              </SelectConfiguration>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Join orders to products</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxJoin" />
+        </Node>
+        <Node ToolID="32">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.Join.Join">
+            <Position x="910" y="465" />
+          </GuiSettings>
+          <Properties>
+            <Configuration joinByRecordPos="False">
+              <JoinInfo connection="Left">
+                <Field field="Region" />
+              </JoinInfo>
+              <JoinInfo connection="Right">
+                <Field field="Region" />
+              </JoinInfo>
+              <SelectConfiguration>
+                <Configuration outputConnection="Join">
+                  <OrderChanged value="False" />
+                  <CommaDecimal value="False" />
+                  <SelectFields>
+                    <SelectField field="Right_ProductID" selected="False" rename="Right_ProductID" />
+                    <SelectField field="Right_Region" selected="False" rename="Right_Region" />
+                    <SelectField field="*Unknown" selected="True" />
+                  </SelectFields>
+                </Configuration>
+              </SelectConfiguration>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Add targets</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxJoin" />
+        </Node>
+      </ChildNodes>
+    </Node>
+    <Node ToolID="40">
+      <GuiSettings Plugin="AlteryxGuiToolkit.ToolContainer.ToolContainer">
+        <Position x="1090" y="285" width="575" height="400" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Caption>4. Score And Prioritize</Caption>
+          <Style TextColor="#0b2140" FillColor="#fff3e6" BorderColor="#c66f19" Transparency="18" Margin="10" />
+          <Disabled value="False" />
+          <Folded value="False" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <ChildNodes>
+        <Node ToolID="41">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.Formula.Formula">
+            <Position x="1125" y="465" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <FormulaFields>
+                <FormulaField field="GrossMarginValue" type="Double" size="255" expression="[RevenueNum] * ToNumber([GrossMarginPct])" />
+                <FormulaField field="LateFlag" type="Int32" size="255" expression="IIF([DaysToShipNum] &gt; ToNumber([TargetShipDays]), 1, 0)" />
+                <FormulaField field="PriorityScore" type="Int32" size="255" expression="Round(([RevenueNum] / 500) + ([LateFlag] * 35) + IIF([StrategicFlagText] = &quot;Yes&quot;, 15, 0), 1)" />
+                <FormulaField field="RecommendedAction" type="V_WString" size="96" expression="IIF([LateFlag]=1, &quot;Escalate fulfilment recovery&quot;, IIF([StrategicFlagText]=&quot;Yes&quot;, &quot;Protect strategic revenue&quot;, &quot;Monitor in next cycle&quot;))" />
+              </FormulaFields>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Score order risk</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxFormula" />
+        </Node>
+        <Node ToolID="42">
+          <GuiSettings Plugin="AlteryxSpatialPluginsGui.Summarize.Summarize">
+            <Position x="1280" y="350" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <SummarizeFields>
+                <SummarizeField field="Region" action="GroupBy" rename="Region" />
+                <SummarizeField field="Category" action="GroupBy" rename="Category" />
+                <SummarizeField field="OrderID" action="Count" rename="OrderCount" />
+                <SummarizeField field="RevenueNum" action="Sum" rename="RevenueTotal" />
+                <SummarizeField field="UnitsNum" action="Sum" rename="UnitsTotal" />
+                <SummarizeField field="DaysToShipNum" action="Avg" rename="AvgDaysToShip" />
+                <SummarizeField field="LateFlag" action="Sum" rename="LateOrderCount" />
+                <SummarizeField field="GrossMarginValue" action="Sum" rename="MarginValue" />
+              </SummarizeFields>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Regional category rollup</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxSpatialPluginsEngine.dll" EngineDllEntryPoint="AlteryxSummarize" />
+        </Node>
+        <Node ToolID="43">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.Formula.Formula">
+            <Position x="1425" y="350" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <FormulaFields>
+                <FormulaField field="OnTimeRate" type="Double" size="255" expression="1 - ([LateOrderCount] / [OrderCount])" />
+                <FormulaField field="PriorityScore" type="Int32" size="255" expression="Round(([RevenueTotal] / 1000) + ([LateOrderCount] * 20), 1)" />
+                <FormulaField field="ReviewNote" type="V_WString" size="128" expression="IIF([LateOrderCount] &gt; 0, &quot;Review fulfilment and customer exposure&quot;, &quot;Healthy lane&quot;)" />
+              </FormulaFields>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Calculate KPI summary</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxFormula" />
+        </Node>
+        <Node ToolID="44">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.Sort.Sort">
+            <Position x="1530" y="350" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <SortInfo locale="0">
+                <Field field="PriorityScore" order="Descending" />
+                <Field field="RevenueTotal" order="Descending" />
+              </SortInfo>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Priority sort</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxSort" />
+        </Node>
+        <Node ToolID="45">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.Filter.Filter">
+            <Position x="1425" y="580" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <Expression>[PriorityScore] &gt;= 70 OR [LateFlag] = 1</Expression>
+              <Mode>Custom</Mode>
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Find review queue</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxFilter" />
+        </Node>
+      </ChildNodes>
+    </Node>
+    <Node ToolID="50">
+      <GuiSettings Plugin="AlteryxGuiToolkit.ToolContainer.ToolContainer">
+        <Position x="1710" y="305" width="320" height="390" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Caption>5. Publish Outputs</Caption>
+          <Style TextColor="#0b2140" FillColor="#f7f4ec" BorderColor="#b76f17" Transparency="18" Margin="10" />
+          <Disabled value="False" />
+          <Folded value="False" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <ChildNodes>
+        <Node ToolID="51">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.DbFileOutput.DbFileOutput">
+            <Position x="1770" y="465" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <File MaxRecords="" FileFormat="0">.\data\outputs\enriched_order_actions.csv</File>
+              <Passwords />
+              <Disable>False</Disable>
+              <FormatSpecificOptions>
+                <LineEndStyle>CRLF</LineEndStyle>
+                <Delimeter>,</Delimeter>
+                <ForceQuotes>False</ForceQuotes>
+                <HeaderRow>True</HeaderRow>
+                <CodePage>65001</CodePage>
+                <WriteBOM>True</WriteBOM>
+              </FormatSpecificOptions>
+              <MultiFile value="False" />
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Write enriched records</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+            <Dependencies><Implicit /></Dependencies>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxDbFileOutput" />
+        </Node>
+        <Node ToolID="52">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.DbFileOutput.DbFileOutput">
+            <Position x="1770" y="350" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <File MaxRecords="" FileFormat="0">.\data\outputs\regional_priority_summary.csv</File>
+              <Passwords />
+              <Disable>False</Disable>
+              <FormatSpecificOptions>
+                <LineEndStyle>CRLF</LineEndStyle>
+                <Delimeter>,</Delimeter>
+                <ForceQuotes>False</ForceQuotes>
+                <HeaderRow>True</HeaderRow>
+                <CodePage>65001</CodePage>
+                <WriteBOM>True</WriteBOM>
+              </FormatSpecificOptions>
+              <MultiFile value="False" />
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Write priority summary</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+            <Dependencies><Implicit /></Dependencies>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxDbFileOutput" />
+        </Node>
+        <Node ToolID="53">
+          <GuiSettings Plugin="AlteryxBasePluginsGui.DbFileOutput.DbFileOutput">
+            <Position x="1770" y="585" />
+          </GuiSettings>
+          <Properties>
+            <Configuration>
+              <File MaxRecords="" FileFormat="0">.\data\outputs\operations_review_queue.csv</File>
+              <Passwords />
+              <Disable>False</Disable>
+              <FormatSpecificOptions>
+                <LineEndStyle>CRLF</LineEndStyle>
+                <Delimeter>,</Delimeter>
+                <ForceQuotes>False</ForceQuotes>
+                <HeaderRow>True</HeaderRow>
+                <CodePage>65001</CodePage>
+                <WriteBOM>True</WriteBOM>
+              </FormatSpecificOptions>
+              <MultiFile value="False" />
+            </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText>Write review queue</DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+            <Dependencies><Implicit /></Dependencies>
+          </Properties>
+          <EngineSettings EngineDll="AlteryxBasePluginsEngine.dll" EngineDllEntryPoint="AlteryxDbFileOutput" />
+        </Node>
+      </ChildNodes>
+    </Node>
+    <Node ToolID="60">
+      <GuiSettings Plugin="AlteryxGuiToolkit.ToolContainer.ToolContainer">
+        <Position x="40" y="755" width="1520" height="310" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Caption>Expand this tool container for workflow descriptions</Caption>
+          <Style TextColor="#0b2140" FillColor="#e1e7f2" BorderColor="#2c3540" Transparency="18" Margin="10" />
+          <Disabled value="False" />
+          <Folded value="False" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <ChildNodes>
+    <Node ToolID="61">
+      <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+        <Position x="70" y="800" width="320" height="32" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Text>Data input and prep</Text>
+          <Font name="Segoe UI" size="8.25" style="1" />
+          <TextColor r="0" g="0" b="0" />
+          <FillColor r="225" g="231" b="242" />
+          <Shape shape="3" />
+          <Justification Justification="0" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+    </Node>
+    <Node ToolID="62">
+      <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+        <Position x="70" y="835" width="415" height="170" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Text>- Read three package-safe CSV inputs:
+  orders, product master, and service targets.
+- Select only fields needed for the reusable action view.
+- Cast numeric fields early for deterministic calculations.
+- Add margin and strategic-product labels before blending.</Text>
+          <Font name="Segoe UI" size="8.25" style="0" />
+          <TextColor r="0" g="0" b="0" />
+          <FillColor r="225" g="231" b="242" />
+          <Shape shape="3" />
+          <Justification Justification="0" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+    </Node>
+    <Node ToolID="63">
+      <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+        <Position x="545" y="800" width="320" height="32" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Text>Blend, scoring, and prioritization</Text>
+          <Font name="Segoe UI" size="8.25" style="1" />
+          <TextColor r="0" g="0" b="0" />
+          <FillColor r="225" g="231" b="242" />
+          <Shape shape="3" />
+          <Justification Justification="0" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+    </Node>
+    <Node ToolID="64">
+      <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+        <Position x="545" y="835" width="430" height="170" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Text>- Join orders to product context by ProductID,
+  then add regional targets by Region.
+- Calculate revenue exposure, late flags,
+  gross margin value, and a simple priority score.
+- Summarize by Region and Category so leaders
+  can review the highest-value lanes first.</Text>
+          <Font name="Segoe UI" size="8.25" style="0" />
+          <TextColor r="0" g="0" b="0" />
+          <FillColor r="225" g="231" b="242" />
+          <Shape shape="3" />
+          <Justification Justification="0" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+    </Node>
+    <Node ToolID="65">
+      <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+        <Position x="1040" y="800" width="320" height="32" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Text>Outputs and validation</Text>
+          <Font name="Segoe UI" size="8.25" style="1" />
+          <TextColor r="0" g="0" b="0" />
+          <FillColor r="225" g="231" b="242" />
+          <Shape shape="3" />
+          <Justification Justification="0" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+    </Node>
+    <Node ToolID="66">
+      <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+        <Position x="1040" y="835" width="430" height="170" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Text>- Enriched records preserve order-level detail
+  for audit and drill-through.
+- Priority summary gives the leadership view
+  by region and category.
+- Review queue isolates records requiring follow-up.
+- Validate row counts and spot-check high-score records
+  before customer playback.</Text>
+          <Font name="Segoe UI" size="8.25" style="0" />
+          <TextColor r="0" g="0" b="0" />
+          <FillColor r="225" g="231" b="242" />
+          <Shape shape="3" />
+          <Justification Justification="0" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+    </Node>
+      </ChildNodes>
+    </Node>
+    <Node ToolID="70">
+      <GuiSettings Plugin="AlteryxGuiToolkit.ToolContainer.ToolContainer">
+        <Position x="1615" y="755" width="355" height="215" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Caption>Reusable accelerator tip</Caption>
+          <Style TextColor="#0b2140" FillColor="#e1e7f2" BorderColor="#2c3540" Transparency="18" Margin="10" />
+          <Disabled value="False" />
+          <Folded value="False" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+      <ChildNodes>
+    <Node ToolID="71">
+      <GuiSettings Plugin="AlteryxGuiToolkit.TextBox.TextBox">
+        <Position x="1645" y="805" width="315" height="120" />
+      </GuiSettings>
+      <Properties>
+        <Configuration>
+          <Text>Keep this pattern reusable by swapping source contracts,
+not the canvas story. If scoring changes,
+update formulas inside the scoring container
+and keep output names stable for review.</Text>
+          <Font name="Segoe UI" size="8.25" style="0" />
+          <TextColor r="0" g="0" b="0" />
+          <FillColor r="225" g="231" b="242" />
+          <Shape shape="3" />
+          <Justification Justification="0" />
+        </Configuration>
+        <Annotation DisplayMode="0">
+          <Name />
+          <DefaultAnnotationText></DefaultAnnotationText>
+          <Left value="False" />
+        </Annotation>
+      </Properties>
+    </Node>
+      </ChildNodes>
+    </Node>
+  </Nodes>
+  <Connections>
+    <Connection>
+      <Origin ToolID="11" Connection="Output" />
+      <Destination ToolID="21" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="21" Connection="Output" />
+      <Destination ToolID="22" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="12" Connection="Output" />
+      <Destination ToolID="23" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="23" Connection="Output" />
+      <Destination ToolID="24" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="13" Connection="Output" />
+      <Destination ToolID="25" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="22" Connection="Output" />
+      <Destination ToolID="31" Connection="Left" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="24" Connection="Output" />
+      <Destination ToolID="31" Connection="Right" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="31" Connection="Join" />
+      <Destination ToolID="32" Connection="Left" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="25" Connection="Output" />
+      <Destination ToolID="32" Connection="Right" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="32" Connection="Join" />
+      <Destination ToolID="41" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="41" Connection="Output" />
+      <Destination ToolID="51" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="41" Connection="Output" />
+      <Destination ToolID="42" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="42" Connection="Output" />
+      <Destination ToolID="43" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="43" Connection="Output" />
+      <Destination ToolID="44" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="44" Connection="Output" />
+      <Destination ToolID="52" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="41" Connection="Output" />
+      <Destination ToolID="45" Connection="Input" />
+    </Connection>
+    <Connection>
+      <Origin ToolID="45" Connection="True" />
+      <Destination ToolID="53" Connection="Input" />
+    </Connection>
+  </Connections>
+  <Properties>
+    <Memory default="True" />
+    <GlobalRecordLimit value="0" />
+    <TempFiles default="True" />
+    <Annotation on="True" includeToolName="False" />
+    <ConvErrorLimit value="10" />
+    <ConvErrorLimit_Stop value="False" />
+    <CancelOnError value="False" />
+    <DisableBrowse value="False" />
+    <EnablePerformanceProfiling value="False" />
+    <PredictiveToolsCodePage value="1252" />
+    <DisableAllOutput value="False" />
+    <ShowAllMacroMessages value="False" />
+    <ShowConnectionStatusIsOn value="True" />
+    <ShowConnectionStatusOnlyWhenRunning value="True" />
+    <ZoomLevel value="0" />
+    <LayoutType>Horizontal</LayoutType>
+    <MetaInfo>
+      <NameIsFileName value="False" />
+      <Name>Customer-Facing Revenue Risk Prioritization</Name>
+      <Description>Showcase workflow combining colored logical containers with customer-facing title and documentation framing.</Description>
+      <Author>Codex</Author>
+      <Company>Alteryx</Company>
+      <WorkflowId value="00000000-0000-0000-0000-000000000000" />
+    </MetaInfo>
+    <Events><Enabled value="True" /></Events>
+  </Properties>
+</AlteryxDocument>
