@@ -9,10 +9,9 @@ if (Test-Path $PidFile) {
     if ($processId) {
         Stop-Process -Id ([int]$processId) -Force
         Remove-Item $PidFile -Force
-        Write-Host "Stopped CSM Accelerator Cockpit."
+    Write-Host "Stopped Accelerator Cockpit."
         exit 0
     }
 }
 
 Write-Host "No cockpit process id was found. If the browser is still open, close it or stop the Python process manually."
-

@@ -43,7 +43,7 @@ from .services import (
 )
 
 
-app = FastAPI(title="CSM Accelerator Cockpit V5")
+app = FastAPI(title="Accelerator Cockpit V5.1")
 app.mount("/static", StaticFiles(directory=static_root()), name="static")
 templates = Jinja2Templates(directory=template_root())
 
@@ -295,5 +295,5 @@ async def health():
         "app": "csm-accelerator-cockpit",
         "version": APP_VERSION,
         "app_root": str(PROJECT_ROOT),
-        "process": "Jon accelerator operating system aligned",
+        "process": "accelerator operating system aligned",
     }

@@ -14,7 +14,7 @@ from typing import Any
 from docx import Document
 
 
-APP_VERSION = "0.6.0"
+APP_VERSION = "5.1"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 COCKPIT_ROOT = Path(__file__).resolve().parent
@@ -39,17 +39,17 @@ PEER_REVIEW_STATUS_ARTIFACT = "status/peer_review_status.json"
 CAPTURE_STATUSES = {
     "not_set": "Not selected",
     "answered": "Answered",
-    "partial": "Partially answered",
-    "not_answered": "Not answered",
-    "needs_follow_up": "Needs follow-up",
+    "partial": "Partial",
+    "not_answered": "No answer",
+    "needs_follow_up": "Follow-up",
 }
 
 EVIDENCE_STATUSES = {
-    "supported": "Answered by transcript",
-    "weak_evidence": "Partially answered by transcript",
-    "missing": "Not answered by transcript",
-    "conflicting": "Needs review",
-    "not_run": "Not answered by transcript",
+    "supported": "Transcript",
+    "weak_evidence": "Partial transcript",
+    "missing": "No transcript",
+    "conflicting": "Review",
+    "not_run": "No transcript",
 }
 
 DOC_ARTIFACTS = [
@@ -197,7 +197,7 @@ JON_SECTIONS = [
     Section(
         "business_problem",
         "Business Problem",
-        "Capture the pain, business consequence, affected users, and why solving it matters now.",
+        "Capture the pain, business impact, affected users, and urgency.",
         [
             "What problem are you trying to solve?",
             "What is slow, manual, inconsistent, risky, or hard to trust today?",
@@ -205,13 +205,13 @@ JON_SECTIONS = [
             "Who feels the pain most directly?",
             "Are you trying to improve visibility, speed, quality, prioritisation, decision-making, or something else?",
         ],
-        ["Core problem", "Business impact", "Affected teams", "Why now", "Cost of current state"],
+        ["Core problem", "Business impact", "Teams", "Why now", "Current cost"],
         ["problem", "pain", "challenge", "manual", "slow", "risk", "impact", "cost", "inconsistent", "trust"],
     ),
     Section(
         "current_process",
         "Current Process",
-        "Describe the current-state process, handoffs, systems, spreadsheets, and known friction.",
+        "Describe today's process, systems, handoffs, and friction.",
         [
             "How is this handled today?",
             "What are the main steps from input to outcome?",
@@ -220,13 +220,13 @@ JON_SECTIONS = [
             "Which steps are most painful or fragile?",
             "What makes the current output difficult to trust or use?",
         ],
-        ["Current process", "Systems involved", "Manual steps", "Handoffs", "Bottlenecks"],
+        ["Process", "Systems", "Manual work", "Handoffs", "Bottlenecks"],
         ["current process", "today", "as is", "manual steps", "spreadsheet", "handoff", "workflow", "process"],
     ),
     Section(
         "desired_outcome",
         "Desired Outcome",
-        "Clarify what first useful output should exist and what business decision or action it enables.",
+        "Clarify the first useful output and the action it enables.",
         [
             "If we gave you a useful first version quickly, what would it produce?",
             "What outputs would be most valuable first?",
@@ -235,13 +235,13 @@ JON_SECTIONS = [
             "What does success look like for the first slice?",
             "What can wait until later?",
         ],
-        ["Target output", "Consumer", "Decision / action", "First-slice success", "Deferred items"],
+        ["Output", "User", "Action", "Success", "Later"],
         ["output", "deliverable", "dashboard", "report", "app", "action", "decision", "success", "first version"],
     ),
     Section(
         "value_realization",
         "Value Realisation",
-        "Capture how the customer will recognise value, measure improvement, and justify the accelerator.",
+        "Capture value, measures, adoption signals, and assumptions.",
         [
             "What business value should this first slice create if it works well?",
             "Where is the value likely to show up first: time saved, faster decisions, reduced risk, improved consistency, better visibility, or greater trust?",
@@ -251,12 +251,12 @@ JON_SECTIONS = [
             "What value assumptions still need to be validated later?",
         ],
         [
-            "Current pain or business impact",
-            "Workflow-enabled operational change",
-            "Quantitative value signals",
-            "Qualitative value signals",
-            "Trust / adoption signals",
-            "Value assumptions / unknowns to validate later",
+            "Impact",
+            "Operational change",
+            "Measures",
+            "Qual signals",
+            "Adoption",
+            "Assumptions",
         ],
         [
             "value",
@@ -285,7 +285,7 @@ JON_SECTIONS = [
     Section(
         "business_questions",
         "Business Questions",
-        "List the questions the accelerator must answer and how users decide what to do next.",
+        "List the questions the accelerator must answer for decisions.",
         [
             "What questions do you need this solution to answer?",
             "What should someone be able to decide once they see the results?",
@@ -293,13 +293,13 @@ JON_SECTIONS = [
             "Which cases should be flagged for review?",
             "What patterns, exceptions, or risks matter most?",
         ],
-        ["Core questions", "Decision points", "Prioritisation", "Review cases", "Business significance"],
+        ["Questions", "Decisions", "Priority", "Reviews", "Significance"],
         ["question", "decide", "prioritize", "prioritise", "rank", "exception", "review", "what should", "which cases"],
     ),
     Section(
         "scope",
         "Scope",
-        "Separate the first slice from explicit exclusions, pilot boundaries, and later phases.",
+        "Separate the first slice, exclusions, pilot boundary, and later phases.",
         [
             "What is in scope for the first slice?",
             "What is out of scope for now?",
@@ -307,13 +307,13 @@ JON_SECTIONS = [
             "Is there a preferred pilot boundary?",
             "Are we proving feasibility, value, or both?",
         ],
-        ["In-scope entities / domains", "Out-of-scope areas", "Pilot boundary", "Phase 1 intent", "Explicit exclusions"],
+        ["In scope", "Out of scope", "Pilot", "Phase 1", "Exclusions"],
         ["scope", "in scope", "out of scope", "pilot", "phase", "priority", "region", "business unit", "product"],
     ),
     Section(
         "inputs_sources_ownership",
         "Inputs, Sources, And Ownership",
-        "Identify source systems, extract owners, refresh cadence, access constraints, and package-safe inputs.",
+        "Identify inputs, owners, refresh cadence, access, and quality risks.",
         [
             "What information is needed to answer these questions?",
             "Where does that information live today?",
@@ -323,19 +323,19 @@ JON_SECTIONS = [
             "Are there known quality, access, or timing concerns?",
         ],
         [
-            "Required inputs",
-            "Source systems / files",
-            "Data owners / SMEs",
-            "Known structure and availability",
-            "Unknowns requiring discovery",
-            "Quality / access risks",
+            "Inputs",
+            "Sources",
+            "Owners",
+            "Structure",
+            "Unknowns",
+            "Risks",
         ],
         ["source", "system", "input", "file", "table", "extract", "owner", "refresh", "cadence", "access", "field", "column", "entity", "grain", "join", "key", "quality"],
     ),
     Section(
         "rules_logic_definitions",
         "Rules, Logic, And Definitions",
-        "Document definitions, calculations, thresholds, filters, joins, and exception-handling rules.",
+        "Document definitions, calculations, thresholds, filters, and joins.",
         [
             "What business rules are already trusted?",
             "Which metrics, classifications, or thresholds matter?",
@@ -344,26 +344,26 @@ JON_SECTIONS = [
             "Which edge cases need special treatment?",
             "What assumptions are acceptable, and which require confirmation?",
         ],
-        ["Trusted rules", "Important definitions", "Thresholds / classifications", "Inclusion / exclusion rules", "Edge cases", "Areas where logic is still uncertain"],
+        ["Rules", "Definitions", "Thresholds", "Filters", "Edge cases", "Unknown logic"],
         ["rule", "logic", "definition", "threshold", "join", "filter", "criteria", "calculation", "formula"],
     ),
     Section(
         "exceptions_safe_handling",
         "Exceptions And Safe Handling",
-        "Capture how missing, inconsistent, late, invalid, or risky data should be handled safely.",
+        "Capture safe handling for missing, late, invalid, or risky data.",
         [
             "What should happen when data is missing, inconsistent, late, or invalid?",
             "What failure cases do you already expect?",
             "Should questionable records be excluded, flagged, defaulted, or sent for review?",
             "What outcomes would create risk if handled incorrectly?",
         ],
-        ["Expected failure modes", "Safe handling rules", "Review / escalation paths", "Risk-sensitive cases"],
+        ["Failures", "Handling", "Escalation", "Risk cases"],
         ["exception", "missing", "inconsistent", "late", "invalid", "failure", "exclude", "flag", "default", "review", "risk", "safe"],
     ),
     Section(
         "validation_trust",
         "Validation And Trust",
-        "Define how outputs are reconciled, who validates them, and what acceptance checks prove trust.",
+        "Define reconciliation, validation owners, and acceptance checks.",
         [
             "What would make you trust the first slice?",
             "How would you validate whether it is working?",
@@ -372,13 +372,13 @@ JON_SECTIONS = [
             "What would count as failure?",
             "Do different audiences need different outputs from the same logic?",
         ],
-        ["Validation criteria", "Reconciliation targets", "Trust signals", "Explainability needs", "Failure conditions", "Audience-specific output needs"],
+        ["Criteria", "Targets", "Trust", "Explainability", "Failures", "Audiences"],
         ["validate", "validation", "reconcile", "check", "test", "trust", "review", "sign-off", "compare", "explainable", "failure"],
     ),
     Section(
         "operational_readiness_phasing",
         "Operational Readiness And Phasing",
-        "Capture what is needed for short-term usefulness versus later productionisation.",
+        "Capture short-term usefulness and later production requirements.",
         [
             "What needs to be true for this to be useful in the short term?",
             "What can be manual in phase 1?",
@@ -386,7 +386,7 @@ JON_SECTIONS = [
             "Are there scheduling, alerting, write-back, governance, or access requirements that should be deferred?",
             "What is the smallest slice that would still prove the approach?",
         ],
-        ["Immediate needs", "Deferred operational requirements", "Phase 1 vs later-state expectations", "Minimum viable first slice"],
+        ["Immediate needs", "Deferred ops", "Phasing", "MVP slice"],
         ["operational", "readiness", "schedule", "refresh", "run", "owner", "handover", "deploy", "production", "support", "phase", "manual", "governance", "access"],
     ),
 ]
@@ -775,7 +775,7 @@ def new_manifest(customer_name: str, project_name: str, csm_name: str, sections:
         "canonical_project_root": str(project_dir),
         "project_structure": PROJECT_FOLDERS,
         "process_pack": {
-            "source": "Jon accelerator operating system",
+                "source": "accelerator operating system",
             "large_prompt": str(LARGE_PROMPT_PATH),
             "sequence_config": str(SEQUENCE_CONFIG_PATH),
         },
@@ -1639,7 +1639,7 @@ def _write_peer_review_status(manifest: dict[str, Any], readiness: dict[str, Any
         "updated_at": utc_now(),
         "customer_facing_assets": ACCELERATOR_ASSET_ARTIFACTS,
         "ready_for_peer_review": state in {"ready_for_peer_review", "reviewed", "published"},
-        "notes": "Customer-facing accelerator assets are generated as Markdown drafts for CSM/Jon review.",
+        "notes": "Customer-facing accelerator assets are generated as Markdown drafts for internal review.",
         "blockers": [] if state != "draft" else [
             "SOP gate must be ready and all accelerator assets must exist before peer review."
         ],
@@ -1735,7 +1735,7 @@ Project ID: `{manifest['run_id']}`
 Canonical project root: `{project_dir}`
 Project identity hash: `{identity_hash}`
 
-This is the project-specific, hydrated workflow-build prompt. Do not edit Jon's reusable Large prompt source. If the reusable prompt changes in Git, regenerate this handoff from the cockpit so the project keeps the latest approved process with the correct case inputs.
+This is the project-specific, hydrated workflow-build prompt. Do not edit the reusable Large prompt source. If the reusable prompt changes in Git, regenerate this handoff from the cockpit so the project keeps the latest approved process with the correct case inputs.
 
 ## Mandatory Identity And Path Gate
 
@@ -1756,8 +1756,10 @@ You are Codex running locally with access to this project folder. Build the Alte
 - Keep all generated assets inside this project folder. Do not reference customer source folders or external systems.
 - Use sanitized/sample data only unless the user explicitly provides approved local inputs.
 - Treat bundled demo transcripts as demo/training context only. Never substitute another nearby accelerator project when this project's files are missing.
-- Treat the Jon folder chain as the workflow source of truth. The transcript corpus is raw evidence; do not bypass the approved SOP/doc chain and build directly from transcript text.
+- Treat the approved folder chain as the workflow source of truth. The transcript corpus is raw evidence; do not bypass the approved SOP/doc chain and build directly from transcript text.
 - Use the value statement, use-case summary, case-study skeleton, and 101/102/201 drafts as supporting context. They should improve narrative alignment, but customer-facing polish must not block the workflow build if the SOP gate is ready.
+- Derive workflow topology, tools, schemas, joins, formulas, and outputs from the approved folder chain. Do not copy these from the hybrid reference workflow or from any unrelated prior project.
+- If the approved SOP/doc chain is too thin to justify a concrete design, stop or create a clearly marked demo-safe interpretation, and write the missing specifics to the gap log before building.
 
 ## Case Inputs
 
@@ -1778,6 +1780,7 @@ Apply the bundled Alteryx beautification rules as build requirements, not as opt
 - Use a title-first canvas with a clear left-to-right narrative.
 - Place every real tool inside a contextual container with compact, useful annotations.
 - Use the bundled customer-facing hybrid reference workflow and profile as the visual standard: top title/banner, clean tool lane, bottom documentation shelf, contextual colored containers, and minimal visual clutter.
+- Treat the hybrid reference as visual grammar only. It must not determine field names, data shapes, formulas, tool sequence, join pattern, output structure, or business entities.
 - Apply aggressive spiderweb reduction: minimize connector crossings, avoid crowded fan-in knots, separate branch lanes, and reroute geometry until the rendered workflow reads cleanly.
 - Prefer readability over blind tool-count minimization. Condense only where it improves both maintainability and visual scanability.
 - Render the workflow preview and iterate until the canvas is clean, balanced, readable, and package-safe.
@@ -1975,7 +1978,7 @@ def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str
         f"- Canonical project root: `{run_dir(manifest['run_id'])}`\n"
         f"- Transcript sources: {manifest.get('transcript', {}).get('source_count', len(_transcript_records(manifest)))}\n"
         f"- Generated: {utc_now()}\n"
-        f"- Process: Jon accelerator operating system, Large-only workflow handoff\n\n"
+        f"- Process: accelerator operating system, Large-only workflow handoff\n\n"
     )
 
     discovery = [
@@ -2005,39 +2008,41 @@ def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str
     guided.append("- Prioritisation, scoring, and output publishing.\n")
     guided.append("- Governance review output for weak or unsafe cases.\n")
 
-    sop = [
-        common_header,
-        "## Build Objective\n\n",
-        "Create a first-slice accelerator workflow only after the SOP gate is satisfied. The workflow should reflect approved customer facts, explicit assumptions, and known open gaps.\n\n",
-        "## Scope And Business Outcome\n\n",
-        manifest.get("capture", {}).get("scope", {}).get("notes") or "- Scope still requires CSM approval.\n",
-        "\n\n## Value Realisation\n\n",
-        manifest.get("capture", {}).get("value_realization", {}).get("notes") or "- Value driver, baseline, and measurement approach still require approval.\n",
-        "\n\n## Inputs, Sources, And Ownership\n\n",
-        manifest.get("capture", {}).get("inputs_sources_ownership", {}).get("notes") or "- Inputs, ownership, source structure, quality, and access constraints still require approval.\n",
-        "\n\n## Rules, Logic, And Definitions\n\n",
-        manifest.get("capture", {}).get("rules_logic_definitions", {}).get("notes") or "- Business definitions, thresholds, filters, and exception rules still require approval.\n",
-        "\n\n## Exceptions And Safe Handling\n\n",
-        manifest.get("capture", {}).get("exceptions_safe_handling", {}).get("notes") or "- Safe handling for missing, invalid, late, or risky data still requires approval.\n",
-        "\n\n## Outputs And Actions\n\n",
-        manifest.get("capture", {}).get("desired_outcome", {}).get("notes") or "- Output/action design still requires approval.\n",
-        "\n\n## Validation Expectations\n\n",
-        manifest.get("capture", {}).get("validation_trust", {}).get("notes") or "- Validation method and sign-off owner still require approval.\n",
-        "\n\n## Operational Readiness And Phasing\n\n",
-        manifest.get("capture", {}).get("operational_readiness_phasing", {}).get("notes") or "- Phase 1 operations and later-state production needs still require approval.\n",
-        "\n\n## Workflow Logic Modules\n\n",
-    ]
-    for module in ["Ingest and profile inputs", "Normalize to neutral schema", "Apply rules and assumptions", "Score and prioritise outputs", "Publish action and governance views"]:
-        sop.append(f"- {module}\n")
-    sop.append("\n## SOP Gate\n\n")
-    sop.append(f"- Current gate status: **{readiness['workflow_gate']}**\n")
-    sop.append(f"- Overall readiness: **{readiness['overall_pct']}%**\n")
-    if readiness["blockers"]:
-        sop.append("- Blockers:\n")
-        for blocker in readiness["blockers"]:
-            sop.append(f"  - {blocker}\n")
-    else:
-        sop.append("- No blockers detected. Workflow generation can be handed to the Large-only workflow builder path.\n")
+    def build_sop(readiness_snapshot: dict[str, Any]) -> str:
+        sop = [
+            common_header,
+            "## Build Objective\n\n",
+            "Create a first-slice accelerator workflow only after the SOP gate is satisfied. The workflow should reflect approved customer facts, explicit assumptions, and known open gaps.\n\n",
+            "## Scope And Business Outcome\n\n",
+            manifest.get("capture", {}).get("scope", {}).get("notes") or "- Scope still requires approval.\n",
+            "\n\n## Value Realisation\n\n",
+            manifest.get("capture", {}).get("value_realization", {}).get("notes") or "- Value driver, baseline, and measurement approach still require approval.\n",
+            "\n\n## Inputs, Sources, And Ownership\n\n",
+            manifest.get("capture", {}).get("inputs_sources_ownership", {}).get("notes") or "- Inputs, ownership, source structure, quality, and access constraints still require approval.\n",
+            "\n\n## Rules, Logic, And Definitions\n\n",
+            manifest.get("capture", {}).get("rules_logic_definitions", {}).get("notes") or "- Business definitions, thresholds, filters, and exception rules still require approval.\n",
+            "\n\n## Exceptions And Safe Handling\n\n",
+            manifest.get("capture", {}).get("exceptions_safe_handling", {}).get("notes") or "- Safe handling for missing, invalid, late, or risky data still requires approval.\n",
+            "\n\n## Outputs And Actions\n\n",
+            manifest.get("capture", {}).get("desired_outcome", {}).get("notes") or "- Output/action design still requires approval.\n",
+            "\n\n## Validation Expectations\n\n",
+            manifest.get("capture", {}).get("validation_trust", {}).get("notes") or "- Validation method and sign-off owner still require approval.\n",
+            "\n\n## Operational Readiness And Phasing\n\n",
+            manifest.get("capture", {}).get("operational_readiness_phasing", {}).get("notes") or "- Phase 1 operations and later-state production needs still require approval.\n",
+            "\n\n## Workflow Logic Modules\n\n",
+        ]
+        for module in ["Ingest and profile inputs", "Normalize to neutral schema", "Apply rules and assumptions", "Score and prioritise outputs", "Publish action and governance views"]:
+            sop.append(f"- {module}\n")
+        sop.append("\n## SOP Gate\n\n")
+        sop.append(f"- Current gate status: **{readiness_snapshot['workflow_gate']}**\n")
+        sop.append(f"- Overall readiness: **{readiness_snapshot['overall_pct']}%**\n")
+        if readiness_snapshot["blockers"]:
+            sop.append("- Blockers:\n")
+            for blocker in readiness_snapshot["blockers"]:
+                sop.append(f"  - {blocker}\n")
+        else:
+            sop.append("- No blockers detected. Workflow generation can move into the controlled build handoff.\n")
+        return "".join(sop)
 
     gap_log = [
         common_header,
@@ -2051,28 +2056,30 @@ def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str
     else:
         gap_log.append("| None | yes | Complete | Supported | Approved | Ready for workflow handoff. |\n")
 
-    assessment = [
-        common_header,
-        "## Architecture Assessment\n\n",
-        "The cockpit treats `03_accelerator_sop.md` as the mandatory handoff gate before workflow generation.\n\n",
-        "## Readiness Scores\n\n",
-        f"- Capture readiness: {readiness['capture_pct']}%\n",
-        f"- Human approval readiness: {readiness['approval_pct']}%\n",
-        f"- Artifact readiness: {readiness['artifact_pct']}%\n",
-        f"- Overall readiness: {readiness['overall_pct']}%\n\n",
-        "## Workflow Build Position\n\n",
-    ]
-    if readiness["workflow_gate"] == "ready":
-        assessment.append("The project can move into Jon's Large-only workflow build handoff after final human review.\n")
-    else:
-        assessment.append("The project is not ready for workflow generation. Resolve the SOP gate blockers and regenerate the handoff prompt.\n")
+    def build_assessment(readiness_snapshot: dict[str, Any]) -> str:
+        assessment = [
+            common_header,
+            "## Architecture Assessment\n\n",
+            "`03_accelerator_sop.md` is the mandatory handoff gate before workflow generation.\n\n",
+            "## Readiness Scores\n\n",
+            f"- Capture readiness: {readiness_snapshot['capture_pct']}%\n",
+            f"- Human approval readiness: {readiness_snapshot['approval_pct']}%\n",
+            f"- Artifact readiness: {readiness_snapshot['artifact_pct']}%\n",
+            f"- Overall readiness: {readiness_snapshot['overall_pct']}%\n\n",
+            "## Workflow Build Position\n\n",
+        ]
+        if readiness_snapshot["workflow_gate"] == "ready":
+            assessment.append("The project can move into workflow build handoff after final human review.\n")
+        else:
+            assessment.append("The project is not ready for workflow generation. Resolve the SOP gate blockers and regenerate the handoff prompt.\n")
+        return "".join(assessment)
 
     content_by_name = {
         "01_customer_discovery_conversation.md": "".join(discovery),
         "02_guided_sop_capture.md": "".join(guided),
-        "03_accelerator_sop.md": "".join(sop),
+        "03_accelerator_sop.md": build_sop(readiness),
         "sop_gap_log.md": "".join(gap_log),
-        "sop_architecture_assessment.md": "".join(assessment),
+        "sop_architecture_assessment.md": build_assessment(readiness),
     }
     content_by_name.update(_asset_content_by_name(manifest, common_header))
 
@@ -2094,6 +2101,12 @@ def generate_docs(manifest: dict[str, Any], sections: list[Section]) -> dict[str
     refreshed_readiness = calculate_readiness(_refresh_artifact_records(manifest), sections)
     manifest = _write_peer_review_status(manifest, refreshed_readiness)
     refreshed_readiness = calculate_readiness(_refresh_artifact_records(manifest), sections)
+    for name, content in {
+        "03_accelerator_sop.md": build_sop(refreshed_readiness),
+        "sop_architecture_assessment.md": build_assessment(refreshed_readiness),
+    }.items():
+        _artifact_path(project_dir, name).write_text(content, encoding="utf-8")
+        manifest["artifacts"][name]["generated_at"] = utc_now()
     manifest = generate_workflow_build_handoff(manifest, sections, refreshed_readiness)
     status = _pipeline_status(manifest, refreshed_readiness)
     status_dir.mkdir(parents=True, exist_ok=True)

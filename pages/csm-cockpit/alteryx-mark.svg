@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Accelerator mark">
+  <rect width="64" height="64" rx="10" fill="#06243a"/>
+  <path d="M18 47 30.5 17h9L27 47h-9Z" fill="#00c853"/>
+  <path d="M33.5 17H46L32.5 47h-9L33.5 17Z" fill="#16d6a4"/>
+  <path d="M37 36h10l-4.2 11H32.6L37 36Z" fill="#2aa7ff"/>
+</svg>

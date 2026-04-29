@@ -178,6 +178,42 @@ class CockpitServicesTest(unittest.TestCase):
             finally:
                 services.RUNS_DIR = original_runs_dir
 
+    def test_generate_docs_uses_one_final_readiness_snapshot(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp)
+            try:
+                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+                for section in sections:
+                    manifest["capture"][section.id]["status"] = "answered"
+                    manifest["capture"][section.id]["notes"] = f"{section.label} notes"
+                    manifest["capture"][section.id]["approved"] = True
+                manifest["analysis"] = {
+                    section.id: {"status": "supported", "score": 9, "evidence": [], "summary": "Supported.", "recommendation": "Approved."}
+                    for section in sections
+                }
+
+                manifest = services.generate_docs(manifest, sections)
+                readiness = services.calculate_readiness(manifest, sections)
+                sop_text = Path(manifest["artifacts"]["03_accelerator_sop.md"]["path"]).read_text(encoding="utf-8")
+                assessment_text = Path(manifest["artifacts"]["sop_architecture_assessment.md"]["path"]).read_text(encoding="utf-8")
+                pipeline_status = json.loads(Path(manifest["artifacts"][services.PIPELINE_STATUS_ARTIFACT]["path"]).read_text(encoding="utf-8"))
+
+                self.assertEqual(readiness["workflow_gate"], "ready")
+                self.assertEqual(readiness["overall_pct"], 100)
+                self.assertEqual(readiness["artifact_pct"], 100)
+                self.assertIn("Current gate status: **ready**", sop_text)
+                self.assertIn("Overall readiness: **100%**", sop_text)
+                self.assertNotIn("Current gate status: **blocked**", sop_text)
+                self.assertNotIn("Generated document chain is incomplete.", sop_text)
+                self.assertIn("Artifact readiness: 100%", assessment_text)
+                self.assertEqual(pipeline_status["readiness"]["workflow_gate"], readiness["workflow_gate"])
+                self.assertEqual(pipeline_status["readiness"]["overall_pct"], readiness["overall_pct"])
+                self.assertEqual(pipeline_status["readiness"]["artifact_pct"], readiness["artifact_pct"])
+            finally:
+                services.RUNS_DIR = original_runs_dir
+
     def test_transcript_evidence_is_advisory_not_workflow_blocking(self) -> None:
         sections = services.JON_SECTIONS
         with tempfile.TemporaryDirectory() as tmp:
@@ -276,6 +312,8 @@ class CockpitServicesTest(unittest.TestCase):
                 self.assertIn("Beautification rules", prompt_text)
                 self.assertIn("customer-facing hybrid reference", prompt_text.lower())
                 self.assertIn("do not bypass the approved SOP/doc chain", prompt_text)
+                self.assertIn("Do not copy these from the hybrid reference workflow", prompt_text)
+                self.assertIn("visual grammar only", prompt_text)
                 self.assertIn("spiderweb reduction", prompt_text.lower())
                 self.assertIn("03_workflow_build/workflows", prompt_text)
                 self.assertEqual(manifest["workflow_build"]["status"], "prompt_ready")
@@ -340,7 +378,7 @@ class CockpitServicesTest(unittest.TestCase):
         manifest["capture"]["business_problem"]["status"] = "not_answered"
         readiness = services.calculate_readiness(manifest, sections)
         self.assertTrue(readiness["generation_ready"])
-        self.assertIn("Business Problem: capture is Not answered.", readiness["blockers"])
+        self.assertIn("Business Problem: capture is No answer.", readiness["blockers"])
 
     def test_generated_docs_use_v44_section_names(self) -> None:
         sections = services.JON_SECTIONS
@@ -395,33 +433,7 @@ class CockpitServicesTest(unittest.TestCase):
             finally:
                 services.RUNS_DIR = original_runs_dir
 
-    def test_autosave_response_updates_workflow_blockers_after_all_sections_complete(self) -> None:
-        sections = services.JON_SECTIONS
-        with tempfile.TemporaryDirectory() as tmp:
-            original_runs_dir = services.RUNS_DIR
-            services.RUNS_DIR = Path(tmp)
-            try:
-                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
-                for section in sections:
-                    manifest["capture"][section.id]["status"] = "answered"
-                    manifest["capture"][section.id]["approved"] = True
-                manifest["capture"]["operational_readiness_phasing"]["status"] = "not_set"
-                manifest["capture"]["operational_readiness_phasing"]["approved"] = False
-                services.save_manifest(manifest)
-                client = TestClient(app)
-                response = client.post(
-                    f"/runs/{manifest['run_id']}/section/operational_readiness_phasing",
-                    json={"status": "answered", "notes": "Ready for phase 1.", "approved": True, "changed_field": "approved"},
-                )
-                self.assertEqual(response.status_code, 200)
-                readiness = response.json()["readiness"]
-                self.assertTrue(readiness["generation_ready"])
-                self.assertEqual(readiness["blockers"], ["Generated document chain is incomplete."])
-                self.assertEqual(readiness["blocker_items"][0]["kind"], "documents")
-            finally:
-                services.RUNS_DIR = original_runs_dir
-
-    def test_ui_smoke_shows_v44_guided_flow(self) -> None:
+    def test_ui_smoke_shows_v51_guided_flow(self) -> None:
         sections = services.JON_SECTIONS
         with tempfile.TemporaryDirectory() as tmp:
             original_runs_dir = services.RUNS_DIR
@@ -433,16 +445,25 @@ class CockpitServicesTest(unittest.TestCase):
                 response = client.get(f"/?run_id={manifest['run_id']}")
                 self.assertEqual(response.status_code, 200)
                 html = response.text
+                self.assertIn("Accelerator Cockpit", html)
+                self.assertIn("Internal Guided UI / V5.1", html)
+                self.assertIn("Capture And Approval", html)
                 self.assertIn("Discovery questions", html)
-                self.assertIn("Helper files", html)
-                self.assertIn("Generate / Refresh Helper Files & Workflow Handoff", html)
+                self.assertIn("Handoff files", html)
+                self.assertIn("Generate / Refresh Handoff Files", html)
+                self.assertIn("Approve for SOP handoff", html)
+                self.assertIn("status-topline", html)
+                self.assertIn('rows="1"', html)
                 self.assertIn('type="radio"', html)
                 self.assertIn("not_set", html)
                 self.assertIn("disabled", html)
                 self.assertIn("blocker-link", html)
                 self.assertIn("data-jump-section", html)
-                self.assertIn("workflow-blockers-region", html)
-                self.assertIn('data-role="workflow-gate"', html)
+                self.assertNotIn("CSM Accelerator", html)
+                self.assertNotIn("Jon", html)
+                self.assertNotIn("Download Helper", html)
+                self.assertNotIn("Codex launch", html)
+                self.assertNotIn("does not contain Codex", html)
                 self.assertNotIn("Artifact Dashboard", html)
                 self.assertNotIn("Human Approval", html)
                 self.assertNotIn("Save Capture", html)

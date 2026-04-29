@@ -2,9 +2,11 @@ $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $PSScriptRoot
 $RepoRoot = Split-Path -Parent $Root
-$PackageName = "csm-accelerator-cockpit-v5-local.zip"
-$PackageRootName = "csm-accelerator-cockpit-v5"
-$DownloadsDir = Join-Path $RepoRoot "pages\csm-cockpit\downloads"
+$PackageName = "csm-accelerator-cockpit-v5.1-local.zip"
+$PackageRootName = "csm-accelerator-cockpit-v5.1"
+$DefaultDownloadsDir = Join-Path $RepoRoot "pages\csm-cockpit\downloads"
+$PlaygroundDownloadsDir = "C:\Users\Adeon\OneDrive\Documents\Playground\pages\csm-cockpit\downloads"
+$DownloadsDir = if (Test-Path (Split-Path -Parent $PlaygroundDownloadsDir)) { $PlaygroundDownloadsDir } else { $DefaultDownloadsDir }
 $StagingRoot = Join-Path $RepoRoot ".codex-temp\csm-cockpit-package"
 $StagingApp = Join-Path $StagingRoot $PackageRootName
 $ZipPath = Join-Path $DownloadsDir $PackageName

@@ -1,23 +1,23 @@
 {% extends "base.html" %}
 {% block content %}
 <header class="hero">
+  <img class="brand-mark" src="{{ url_for('static', path='alteryx-mark.svg') }}" alt="Alteryx">
   <div>
-    <p class="eyebrow">Jon Template Guided UI / V{{ app_version }}</p>
-    <h1>CSM Accelerator Cockpit</h1>
+    <p class="eyebrow">Internal Guided UI / V{{ app_version }}</p>
+    <h1>Accelerator Cockpit</h1>
     <p class="hero-copy">
-      A compact guided front door for accelerator discovery: attach transcript evidence,
-      work Jon's 11 discovery sections, approve the SOP handoff, then generate the
-      helper files and Codex workflow-build package.
+      Guided intake for accelerator discovery, evidence review, SOP approval, and
+      workflow handoff preparation.
     </p>
   </div>
   <div class="hero-panel">
     {% if readiness %}
       <span class="score">{{ readiness.overall_pct }}%</span>
       <span class="score-label">SOP readiness</span>
-      <span class="gate {{ readiness.workflow_gate }}" data-role="hero-gate">{{ readiness.workflow_gate }}</span>
+      <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
     {% else %}
-      <span class="score">V5</span>
-      <span class="score-label">CSM cockpit</span>
+      <span class="score">V{{ app_version }}</span>
+      <span class="score-label">Accelerator cockpit</span>
       <span class="gate blocked">no project</span>
     {% endif %}
   </div>
@@ -36,8 +36,8 @@
           <label>Accelerator / use case
             <input name="project_name" placeholder="Use case / accelerator">
           </label>
-          <label>CSM
-            <input name="csm_name" placeholder="CSM name">
+          <label>Owner
+            <input name="csm_name" placeholder="Owner name">
           </label>
           <button type="submit">Create Project</button>
         </form>
@@ -53,8 +53,8 @@
           <label>Accelerator / use case
             <input name="project_name" value="First-Slice Accelerator Discovery" placeholder="Use case / accelerator">
           </label>
-          <label>CSM
-            <input name="csm_name" placeholder="CSM name">
+          <label>Owner
+            <input name="csm_name" placeholder="Owner name">
           </label>
           <button type="submit">Create Project</button>
         </form>
@@ -97,10 +97,9 @@
       <section class="empty-state">
         <h2>Create a project, then attach transcript evidence</h2>
         <p>
-          V5 follows Jon's operating-system folder structure and 11-section discovery
-          template exactly. Once a project exists, the CSM works section-by-section with
-          autosave, advisory evidence playback, and one generate button for the helper
-          files and workflow handoff.
+          V5.1 guides each section through evidence review, capture, approval, and
+          handoff preparation. Once a project exists, work section-by-section with
+          autosave and advisory evidence playback.
         </p>
       </section>
     {% else %}
@@ -123,8 +122,8 @@
           <h2>Attach Evidence First</h2>
           <p class="muted">
             Add the first transcript, then keep adding follow-up calls as they happen.
-            The cockpit builds one combined discovery corpus and writes Jon's canonical
-            discovery file into Jon's 01_discovery folder.
+            The cockpit builds one combined discovery corpus and writes the canonical
+            discovery file into the project folder.
           </p>
           {% if manifest.transcript.analyzed_at %}
             <p class="success success-line"><span class="done-mark">Done</span> Evidence corpus analyzed: {{ manifest.transcript.source_count or manifest.transcripts|length }} source{{ '' if (manifest.transcript.source_count or manifest.transcripts|length) == 1 else 's' }}, {{ manifest.transcript.characters }} characters captured.</p>
@@ -159,13 +158,13 @@
         <div class="section-title">
           <div>
             <p class="eyebrow">2. Guided Call</p>
-            <h2>Jon Template Capture And Approval</h2>
+            <h2>Capture And Approval</h2>
           </div>
           <span class="pill">autosave</span>
         </div>
         <p class="muted compact-copy">
-          Work only Jon's 11 template sections. Each change saves immediately. Transcript
-          evidence remains advisory; CSM status and approval are what control readiness.
+          Work the required discovery sections. Each change saves immediately. Transcript
+          evidence is advisory; status and approval control readiness.
         </p>
         <div class="section-table compact">
           {% for section in sections %}
@@ -206,19 +205,25 @@
                   <details class="snippet-list">
                     <summary>
                       <span>Review snippets</span>
-                      <span class="snippet-summary">{{ analysis.summary or "Transcript analysis has not run yet." }}</span>
                     </summary>
-                    <p class="evidence-summary">{{ analysis.recommendation or "Attach a transcript and capture the section before SOP handoff." }}</p>
+                    <p class="evidence-summary">{{ analysis.summary or analysis.recommendation or "Attach evidence or capture this as a follow-up." }}</p>
                     {% if analysis.evidence %}
-                      {% for evidence in analysis.evidence %}
-                        <blockquote>{{ evidence.snippet }}</blockquote>
+                      {% for evidence in analysis.evidence[:3] %}
+                        <blockquote>{{ evidence.snippet[:220] }}{% if evidence.snippet|length > 220 %}...{% endif %}</blockquote>
                       {% endfor %}
                     {% else %}
-                      <p class="muted">No review snippets yet. Attach transcript evidence or treat this as a CSM follow-up.</p>
+                      <p class="muted">No review snippets yet. Attach transcript evidence or treat this as a follow-up.</p>
                     {% endif %}
                   </details>
                 </div>
                 <div class="section-controls">
+                  <div class="status-topline">
+                    <span class="status-label">Status</span>
+                    <label class="approve-line">
+                      <input class="autosave-input" data-field="approved" type="checkbox" {% if item.approved %}checked{% endif %}>
+                      <span>Approve for SOP handoff</span>
+                    </label>
+                  </div>
                   <fieldset class="status-radios">
                     <legend>Status</legend>
                     {% for value, label in capture_statuses.items() %}
@@ -230,12 +235,9 @@
                       {% endif %}
                     {% endfor %}
                   </fieldset>
-                  <label>Facts, assumptions, gaps, or follow-ups
-                    <textarea class="autosave-input" data-field="notes" placeholder="Facts, assumptions, gaps, or follow-ups">{{ item.notes }}</textarea>
-                  </label>
-                  <label class="approve-line">
-                    <input class="autosave-input" data-field="approved" type="checkbox" {% if item.approved %}checked{% endif %}>
-                    <span>Approve this section for SOP handoff</span>
+                  <label class="notes-field">
+                    <span>Facts, assumptions, gaps, or follow-ups</span>
+                    <textarea class="autosave-input" data-field="notes" rows="1" placeholder="Facts, assumptions, gaps, or follow-ups">{{ item.notes }}</textarea>
                   </label>
                   <p class="autosave-state muted" aria-live="polite">Autosaved</p>
                 </div>
@@ -245,11 +247,11 @@
         </div>
         <div class="actions guided-actions">
           <form action="/runs/{{ manifest.run_id }}/generate-docs" method="post">
-            <button id="generate-docs-button" type="submit" {% if not readiness.generation_ready %}disabled{% endif %}>Generate / Refresh Helper Files & Workflow Handoff</button>
+            <button id="generate-docs-button" type="submit" {% if not readiness.generation_ready %}disabled{% endif %}>Generate / Refresh Handoff Files</button>
           </form>
           <p id="generate-docs-help" class="muted compact-copy">
             {% if readiness.generation_ready %}
-              This creates the helper files, accelerator assets, and the gated workflow handoff package.
+              This creates the accelerator assets and gated workflow handoff files.
             {% else %}
               Complete section statuses and approvals first. Missing: {{ readiness.generation_missing[:4]|join('; ') }}{% if readiness.generation_missing|length > 4 %}; and {{ readiness.generation_missing|length - 4 }} more{% endif %}.
             {% endif %}
@@ -268,24 +270,19 @@
         <p class="eyebrow">3. Workflow Handoff</p>
         <div class="section-title">
           <div>
-            <h2>Gated Codex Build Package</h2>
+            <h2>Gated Workflow Handoff</h2>
             <p class="muted compact-copy">
-              The cockpit does not contain Codex. It prepares Jon's project folders,
-              resolves Jon's Large prompt with this project's files, and optionally
-              opens local Codex when a launch command is available.
+              The cockpit prepares project-specific handoff files from the approved
+              SOP, captured assumptions, evidence, and generated accelerator assets.
             </p>
           </div>
-          <span class="gate {{ readiness.workflow_gate }}" data-role="workflow-gate">{{ readiness.workflow_gate }}</span>
+          <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
         </div>
 
         <div class="preflight-grid">
           <article class="preflight-tile {% if prompt_artifact.exists %}ready{% else %}blocked{% endif %}">
-            <strong>Prompt ready</strong>
+            <strong>Handoff prompt</strong>
             <span>{% if prompt_artifact.exists %}generated{% else %}not generated{% endif %}</span>
-          </article>
-          <article class="preflight-tile {% if workflow.codex_detected %}ready{% else %}warning{% endif %}">
-            <strong>Codex launch command</strong>
-            <span>{% if workflow.codex_detected %}available{% else %}not found{% endif %}</span>
           </article>
           <article class="preflight-tile {% if workflow.designer_detected %}ready{% else %}warning{% endif %}">
             <strong>Designer / Engine</strong>
@@ -296,7 +293,7 @@
             <span>{% if workflow.builder_toolkit_ready and workflow.beautification_ready %}bundled{% else %}missing{% endif %}</span>
           </article>
           <article class="preflight-tile {% if helper_files_created %}ready{% else %}blocked{% endif %}">
-            <strong>Helper files</strong>
+            <strong>Handoff files</strong>
             <span>{% if helper_files_created %}created{% else %}not created{% endif %}</span>
           </article>
           <article class="preflight-tile {% if workflow.detected_artifacts %}ready{% else %}neutral{% endif %}">
@@ -306,7 +303,7 @@
         </div>
 
         <div class="helper-path">
-          <strong>Project helper folder</strong>
+          <strong>Project folder</strong>
           <code>{{ manifest.canonical_project_root }}</code>
           <form action="/runs/{{ manifest.run_id }}/open-folder" method="post">
             <input type="hidden" name="target" value="project">
@@ -314,9 +311,8 @@
           </form>
         </div>
 
-        <div id="workflow-blockers-region">
         {% if readiness.blockers %}
-          <div class="blockers" data-role="workflow-blockers">
+          <div class="blockers">
             <h3>Workflow build blocked by:</h3>
             <ul>
               {% for blocker in readiness.blocker_items %}
@@ -331,18 +327,14 @@
             </ul>
           </div>
         {% else %}
-          <p class="success" data-role="workflow-ready-message">SOP gate is ready. The workflow handoff can be used by local Codex.</p>
+          <p class="success">SOP gate is ready. The workflow handoff is ready for controlled build.</p>
         {% endif %}
-        </div>
 
         <div class="workflow-actions">
           {% if prompt_artifact.exists %}
             <a class="link-button" href="/runs/{{ manifest.run_id }}/artifacts/{{ prompt_key }}">Open Prompt</a>
             <a class="link-button secondary-link" href="/runs/{{ manifest.run_id }}/artifacts/{{ prompt_key }}" download>Download Prompt</a>
             <button type="button" class="secondary copy-prompt" data-copy-url="/runs/{{ manifest.run_id }}/artifacts/{{ prompt_key }}">Copy Prompt</button>
-          {% endif %}
-          {% if helper_artifact.exists %}
-            <a class="link-button secondary-link" href="/runs/{{ manifest.run_id }}/artifacts/{{ helper_key }}" download>Download Helper</a>
           {% endif %}
           {% if build_manifest_artifact.exists %}
             <a class="link-button secondary-link" href="/runs/{{ manifest.run_id }}/artifacts/{{ manifest_key }}">Open Manifest</a>
@@ -356,18 +348,8 @@
 
         {% if readiness.workflow_gate == "ready" and prompt_artifact.exists %}
           <p class="success">Ready for controlled workflow build handoff. The prompt is project-specific and copy/paste-ready.</p>
-          {% if workflow.codex_detected %}
-            <form action="/runs/{{ manifest.run_id }}/launch-codex" method="post" class="launch-form">
-              <button type="submit">Experimental: Copy Prompt And Launch Codex</button>
-            </form>
-            {% if workflow.last_launch_at %}
-              <p class="muted">Last launch: {{ workflow.last_launch_at }} / {{ workflow.last_launch_status }}</p>
-            {% endif %}
-          {% else %}
-            <p class="muted">No launchable Codex command was found from this web app. If Codex is already open, use Open Prompt or Copy Prompt and paste it into that session manually.</p>
-          {% endif %}
         {% else %}
-          <p class="muted">Resolve blockers, then generate the helper files and handoff before asking Codex to build the workflow.</p>
+          <p class="muted">Resolve blockers, then generate the handoff files before workflow build.</p>
         {% endif %}
 
         {% if workflow.detected_artifacts %}
@@ -404,62 +386,13 @@
     if (!button || !help || !readiness) return;
     button.disabled = !readiness.generation_ready;
     if (readiness.generation_ready) {
-      help.textContent = "This creates the helper files, accelerator assets, and the gated workflow handoff package.";
+      help.textContent = "This creates the accelerator assets and gated workflow handoff files.";
       return;
     }
     const missing = readiness.generation_missing || [];
     const firstItems = missing.slice(0, 4).join("; ");
     const more = missing.length > 4 ? `; and ${missing.length - 4} more` : "";
     help.textContent = `Complete section statuses and approvals first. Missing: ${firstItems}${more}.`;
-  }
-
-  function updateGateChips(readiness) {
-    if (!readiness) return;
-    document.querySelectorAll('[data-role="hero-gate"], [data-role="workflow-gate"]').forEach((chip) => {
-      chip.className = `gate ${readiness.workflow_gate}`;
-      chip.textContent = readiness.workflow_gate;
-    });
-  }
-
-  function blockerButton(blocker) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "blocker-link";
-    button.textContent = blocker.message;
-    if (blocker.section_id) {
-      button.dataset.jumpSection = blocker.section_id;
-    } else {
-      button.dataset.jumpTarget = "generate-docs-button";
-    }
-    return button;
-  }
-
-  function updateWorkflowBlockers(readiness) {
-    const region = document.querySelector("#workflow-blockers-region");
-    if (!region || !readiness) return;
-    region.replaceChildren();
-    const blockers = readiness.blocker_items || [];
-    if (!blockers.length) {
-      const ready = document.createElement("p");
-      ready.className = "success";
-      ready.dataset.role = "workflow-ready-message";
-      ready.textContent = "SOP gate is ready. The workflow handoff can be used by local Codex.";
-      region.appendChild(ready);
-      return;
-    }
-    const wrapper = document.createElement("div");
-    wrapper.className = "blockers";
-    wrapper.dataset.role = "workflow-blockers";
-    const title = document.createElement("h3");
-    title.textContent = "Workflow build blocked by:";
-    const list = document.createElement("ul");
-    blockers.forEach((blocker) => {
-      const item = document.createElement("li");
-      item.appendChild(blockerButton(blocker));
-      list.appendChild(item);
-    });
-    wrapper.append(title, list);
-    region.appendChild(wrapper);
   }
 
   async function saveSection(section, changedField = "") {
@@ -484,8 +417,6 @@
       updateMetric("approval_pct", payload.readiness.approval_pct);
       updateMetric("artifact_pct", payload.readiness.artifact_pct);
       updateGenerateButton(payload.readiness);
-      updateGateChips(payload.readiness);
-      updateWorkflowBlockers(payload.readiness);
       if (payload.auto_collapse) {
         section.open = false;
       } else if (changedField === "status") {

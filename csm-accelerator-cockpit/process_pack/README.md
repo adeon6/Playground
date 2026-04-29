@@ -69,6 +69,7 @@ For any workflow build, use this stack in order:
 Do not skip the `Large` prompt.
 Do not start from the SOP alone.
 Do not sign off a workflow before the beautification pass.
+Do not let reference workflows become logic templates. The project SOP and approved project documents must determine topology, schemas, formulas, joins, outputs, and sample data. Visual references may guide only canvas presentation and readability.
 
 ## What Is In This Pack
 

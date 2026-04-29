@@ -13,6 +13,7 @@ $RequiredPaths = @(
     "csm_cockpit\templates\index.html",
     "csm_cockpit\templates\base.html",
     "csm_cockpit\static\cockpit.css",
+    "csm_cockpit\static\alteryx-mark.svg",
     "sample_data\sanitized_geo_spatial_discovery.md",
     "process_pack\README.md",
     "process_pack\sequencer\sequence_config.json",
@@ -64,7 +65,7 @@ function Test-CockpitForThisFolder {
     }
     try {
         $homeResponse = Invoke-WebRequest -UseBasicParsing -Uri "$Url/" -TimeoutSec 3
-        return $homeResponse.StatusCode -eq 200 -and $homeResponse.Content.Contains("CSM Accelerator Cockpit")
+        return $homeResponse.StatusCode -eq 200 -and $homeResponse.Content.Contains("Accelerator Cockpit")
     } catch {
         return $false
     }
@@ -101,7 +102,7 @@ Write-Host "Installing or refreshing app dependencies..."
 
 if (-not (Test-CockpitForThisFolder)) {
     Stop-StaleCockpitOnPort
-    Write-Host "Starting CSM Accelerator Cockpit..."
+    Write-Host "Starting Accelerator Cockpit..."
     $arguments = @(
         "-m", "uvicorn",
         "csm_cockpit.app:app",
@@ -138,7 +139,7 @@ if (-not (Test-CockpitForThisFolder)) {
 
 Start-Process $Url
 Write-Host ""
-Write-Host "CSM Accelerator Cockpit is open at $Url"
+Write-Host "Accelerator Cockpit is open at $Url"
 Write-Host "Use 'Stop CSM Cockpit.bat' when you are done."
 Write-Host ""
 Read-Host "Press Enter to close this launcher window"

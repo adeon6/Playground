@@ -150,6 +150,8 @@ Read the SOP carefully and extract:
 - explicit and implicit assumptions
 - stated physical architecture versus implied physical architecture
 
+Derive the workflow topology from the SOP and approved project documents. Do not copy topology, schemas, formulas, join logic, output shape, or sample data from unrelated reference workflows. Reference workflows may guide presentation and validation expectations only.
+
 You should specifically watch for:
 - exact-looking SQL that is still environment-dependent
 - exact-looking formulas that still require policy decisions
@@ -254,6 +256,12 @@ The workflow should be robust:
 - clearly defined reject streams
 - stable output schemas
 
+Reference workflow guardrail:
+- use beautification references for title framing, contextual containers, documentation shelf, annotation density, lane discipline, and connector readability
+- do not use beautification references as logic templates
+- if the SOP is too thin to justify a specific tool, field, formula, join, or output, stop and log the gap or mark the implementation as a demo-safe interpretation
+- if the use case requires geospatial, reporting, macros, parsing, predictive tools, many inputs, no joins, or a non-linear topology, build that actual topology and adapt the visual language around it
+
 PHASE 7. ITERATE HARD
 
 This is mandatory.
@@ -350,6 +358,7 @@ JUDGEMENT RULES
 - Use deterministic demo choices whenever possible.
 - Never let a hard-coded assumption slip through unnoticed.
 - Treat the analytical base table as a contract.
+- Treat reference workflows as visual examples, not sources of business truth.
 
 REQUIRED DELIVERABLES
 

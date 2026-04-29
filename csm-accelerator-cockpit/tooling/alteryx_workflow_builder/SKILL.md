@@ -22,6 +22,7 @@ Do not use this skill for credential provisioning or OAuth setup. Runtime-only t
 - When a workflow is customer-facing, accelerator-ready, visually messy, or explicitly being beautified, use `alteryx-beautification` alongside this skill.
 - For starter-kit work, any workflow-specific standards or failures mentioned by other skills defer to `alteryx-workflow-builder`.
 - `alteryx-starter-kit-factory` may own kit structure, localization, TOC collateral, and packaging, but it does not own workflow QA or workflow repair.
+- Visual reference workflows are not logic templates. Derive topology, schemas, formulas, tools, joins, outputs, and data contracts from the current approved requirements; use references only for presentation standards unless the current requirements independently require the same logic.
 
 ## Mandatory Build Artifacts
 Always produce:
@@ -63,6 +64,14 @@ Unsupported or beta classes remain out of scope until tier-2 gates pass.
 - Native-supported ops must compile through native templates.
 - Generic fallback on native-supported ops is a hard compile blocker.
 - Missing native template files are compile blockers.
+- Templates must be Designer-native, not renderer-only approximations. Formula, Join, Filter, Summarize, and output tools must use native configuration shapes and native connection anchors that survive open/run/refresh in Designer.
+- If compiling to a distribution folder, stage package-relative assets beside the emitted workflow so paths resolve from the workflow file location.
+
+## Reference Overfitting Guardrail
+- Before creating `workflow_spec.json`, derive the workflow topology from the active SOP, data contract, prompt, or existing workflow. Do not begin from a golden/reference workflow and swap labels.
+- Never copy field names, sample data, scoring formulas, join keys, output schemas, tool counts, or branch topology from unrelated references unless the current project explicitly calls for them.
+- If the requirements are too thin to justify concrete logic, either stop and log the gap, or build a clearly marked demo-safe interpretation with assumptions and gaps documented.
+- Customer-facing hybrid references should influence canvas presentation only: title framing, contextual containers, lane discipline, documentation shelf, annotation density, and anti-spiderweb routing.
 
 ## Validation Commands
 ```bash
@@ -73,6 +82,7 @@ python verify_workflows.py --dirs ./dist --mode demo
 python scripts/golden_sanity.py
 python scripts/smoke_test.py
 python scripts/render_workflow_image.py ./dist/main.yxmd --out ./dist/main.preview.png
+& "C:\Program Files\Alteryx\bin\AlteryxEngineCmd.exe" ./dist/main.yxmd
 ```
 
 ## Deterministic Validation Loop (Required)
@@ -81,8 +91,9 @@ For every create or edit cycle:
 2. Run `lint_yxmd.py`.
 3. Run `verify_workflows.py`.
 4. Run repo-native structural checks that exist for the target repo.
-5. Fix violations.
-6. Re-run until all required gates pass.
+5. Run `AlteryxEngineCmd.exe` when available.
+6. Fix violations, runtime errors, runtime warnings caused by bad generated XML, and package-path defects.
+7. Re-run until all required gates pass.
 
 ## Automatic Validation + Remediation Contract (Required)
 When this skill is used to validate, test, inspect, or analyze existing workflows, remediation is mandatory by default.
