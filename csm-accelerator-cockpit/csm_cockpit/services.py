@@ -14,7 +14,7 @@ from typing import Any
 from docx import Document
 
 
-APP_VERSION = "5.3"
+APP_VERSION = "5.4"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 COCKPIT_ROOT = Path(__file__).resolve().parent

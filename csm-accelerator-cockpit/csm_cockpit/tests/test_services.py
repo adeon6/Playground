@@ -451,7 +451,7 @@ class CockpitServicesTest(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 html = response.text
                 self.assertIn("Accelerator Cockpit", html)
-                self.assertIn("Internal Guided UI / V5.3", html)
+                self.assertIn("Internal Guided UI / V5.4", html)
                 self.assertIn("Capture And Approval", html)
                 self.assertIn("Discovery questions", html)
                 self.assertIn("Review snippets (0)", html)
