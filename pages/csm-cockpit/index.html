@@ -209,12 +209,12 @@
       <section class="hero">
         <img class="mark" src="./alteryx-mark.svg" alt="" aria-hidden="true">
         <div>
-          <p class="eyebrow">Local Python App / V5.5</p>
+          <p class="eyebrow">Local Python App / V5.7</p>
           <h1>Accelerator Cockpit</h1>
           <p>Guided intake for accelerator discovery, evidence review, SOP approval, and workflow handoff preparation.</p>
         </div>
         <div class="version">
-          <strong>V5.5</strong>
+          <strong>V5.7</strong>
           <span>Release package</span>
         </div>
       </section>
@@ -222,11 +222,11 @@
         <article class="card download-card">
           <h2>Run Locally</h2>
           <p class="muted">Download the ZIP, extract the app folder, then double-click:</p>
-          <code>csm-accelerator-cockpit-v5.5\Start Accelerator Cockpit.bat</code>
+          <code>csm-accelerator-cockpit-v5.7\Start Accelerator Cockpit.bat</code>
           <p>The launcher creates a local environment, starts the app, and opens the browser. Customer transcripts stay on the machine.</p>
           <div class="button-row">
-            <a class="button primary" href="./downloads/csm-accelerator-cockpit-v5.5-local.zip">Download V5.5 Standard ZIP</a>
-            <a class="button" href="./downloads/csm-accelerator-cockpit-v5.5-with-global-skills.zip">Download V5.5 + Global Skills ZIP</a>
+            <a class="button primary" href="./downloads/csm-accelerator-cockpit-v5.7-local.zip">Download V5.7 Standard ZIP</a>
+            <a class="button" href="./downloads/csm-accelerator-cockpit-v5.7-with-global-skills.zip">Download V5.7 + Global Skills ZIP</a>
             <a class="button" href="https://github.com/adeon6/Playground/tree/main/pages/csm-cockpit">Open GitHub Folder</a>
           </div>
           <p class="muted download-note">Use the standard ZIP for self-contained cockpit projects. Use the global-skills ZIP only when you also want to update Codex's global Alteryx workflow skills on that machine.</p>
@@ -235,6 +235,22 @@
           <h2>Patch Notes</h2>
           <p class="muted">Version history for the local cockpit package.</p>
           <details class="release-entry" open>
+            <summary><span>V5.7</span></summary>
+            <ul>
+              <li>Kept Workflow Handoff blockers synchronized after each autosave and bulk approval.</li>
+              <li>Serialized rapid per-section autosaves so fast status and approval clicks settle correctly.</li>
+              <li>Preserved the hidden logo double-click bulk SOP approval control.</li>
+            </ul>
+          </details>
+          <details class="release-entry">
+            <summary><span>V5.6</span></summary>
+            <ul>
+              <li>Added a hidden logo double-click control that reveals an Approve all for SOP button.</li>
+              <li>The bulk action marks every section Answered and approved while preserving notes and evidence.</li>
+              <li>Readiness, blocker guidance, section chips, and handoff generation state update immediately after the bulk approval.</li>
+            </ul>
+          </details>
+          <details class="release-entry">
             <summary><span>V5.5</span></summary>
             <ul>
               <li>Made existing project refresh explicit: old projects can be opened in the newer cockpit and regenerated in place.</li>

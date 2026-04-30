@@ -129,9 +129,29 @@ code {
   width: 52px;
   height: 52px;
   flex: 0 0 auto;
-  align-self: center;
   border-radius: 12px;
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+.brand-cluster {
+  display: flex;
+  flex: 0 0 auto;
+  align-self: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.bulk-approve-button {
+  max-width: 9rem;
+  min-height: 34px;
+  padding: 0.42rem 0.58rem;
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.bulk-approve-button[hidden] {
+  display: none;
 }
 
 .hero h1 {
@@ -1063,6 +1083,10 @@ blockquote {
   .actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .brand-cluster {
+    align-self: flex-start;
   }
 
   .mini-metrics {

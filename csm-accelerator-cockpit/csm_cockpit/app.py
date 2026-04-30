@@ -43,7 +43,7 @@ from .services import (
 )
 
 
-app = FastAPI(title="Accelerator Cockpit V5.5")
+app = FastAPI(title="Accelerator Cockpit V5.7")
 app.mount("/static", StaticFiles(directory=static_root()), name="static")
 templates = Jinja2Templates(directory=template_root())
 
@@ -63,6 +63,24 @@ def _redirect(run_id: str | None = None, anchor: str = "") -> RedirectResponse:
     suffix = f"?run_id={run_id}" if run_id else ""
     fragment = f"#{anchor}" if anchor else ""
     return RedirectResponse(url=f"/{suffix}{fragment}", status_code=303)
+
+
+def _section_ui_state(section, manifest: dict[str, Any]) -> dict[str, Any]:
+    item = manifest.get("capture", {}).get(section.id, {})
+    analysis = manifest.get("analysis", {}).get(section.id, {})
+    capture_status = item.get("status", "not_set")
+    evidence_status = analysis.get("status", "not_run")
+    return {
+        "section_id": section.id,
+        "section_label": section.label,
+        "capture_status": capture_status,
+        "capture_label": CAPTURE_STATUSES.get(capture_status, "Not answered"),
+        "approved": bool(item.get("approved")),
+        "approval_label": "approved" if item.get("approved") else "pending",
+        "evidence_status": evidence_status,
+        "evidence_label": EVIDENCE_STATUSES.get(evidence_status, "Not run"),
+        "should_open": capture_status in {"not_set", "partial", "not_answered", "needs_follow_up"},
+    }
 
 
 def _helper_files_created(manifest: dict[str, Any] | None) -> bool:
@@ -158,23 +176,35 @@ async def autosave_section(run_id: str, section_id: str, request: Request):
     save_manifest(manifest)
     refreshed = load_manifest(run_id)
     readiness = calculate_readiness(refreshed, sections)
-    analysis = refreshed.get("analysis", {}).get(section_id, {})
-    evidence_status = analysis.get("status", "not_run")
-    should_open = item["status"] in {"not_set", "partial", "not_answered", "needs_follow_up"}
+    section_state = _section_ui_state(section, refreshed)
     auto_collapse = changed_field == "approved" and item["approved"]
     return {
         "ok": True,
-        "section_id": section_id,
-        "section_label": section.label,
-        "capture_status": item["status"],
-        "capture_label": CAPTURE_STATUSES.get(item["status"], "Not answered"),
-        "approved": item["approved"],
-        "approval_label": "approved" if item["approved"] else "pending",
-        "evidence_status": evidence_status,
-        "evidence_label": EVIDENCE_STATUSES.get(evidence_status, "Not run"),
+        **section_state,
         "readiness": readiness,
-        "should_open": should_open,
         "auto_collapse": auto_collapse,
+    }
+
+
+@app.post("/runs/{run_id}/sections/approve-all")
+async def approve_all_sections(run_id: str):
+    sections = _sections()
+    manifest = _manifest_or_404(run_id)
+    capture = manifest.setdefault("capture", {})
+    for section in sections:
+        item = capture.setdefault(section.id, {"status": "not_set", "notes": "", "approved": False})
+        item["status"] = "answered"
+        item["notes"] = str(item.get("notes", "")).strip()
+        item["approved"] = True
+
+    reanalyze_transcript_corpus(manifest, sections)
+    save_manifest(manifest)
+    refreshed = load_manifest(run_id)
+    readiness = calculate_readiness(refreshed, sections)
+    return {
+        "ok": True,
+        "readiness": readiness,
+        "sections": [_section_ui_state(section, refreshed) for section in sections],
     }
 
 

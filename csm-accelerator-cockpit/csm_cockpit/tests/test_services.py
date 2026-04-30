@@ -491,7 +491,17 @@ class CockpitServicesTest(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 html = response.text
                 self.assertIn("Accelerator Cockpit", html)
-                self.assertIn("Internal Guided UI / V5.5", html)
+                self.assertIn("Internal Guided UI / V5.7", html)
+                self.assertIn('data-role="bulk-approve-toggle"', html)
+                self.assertIn('data-role="workflow-gate"', html)
+                self.assertIn('data-role="workflow-blocker-list"', html)
+                self.assertIn('id="workflow-blockers"', html)
+                self.assertIn('id="workflow-ready-message"', html)
+                self.assertIn('id="workflow-resolve-message"', html)
+                self.assertIn('id="bulk-approve-button"', html)
+                self.assertIn('data-approve-all-url=', html)
+                self.assertIn("Approve all for SOP", html)
+                self.assertIn("hidden", html)
                 self.assertIn("Capture And Approval", html)
                 self.assertIn("Discovery questions", html)
                 self.assertIn("Review snippets (0)", html)
@@ -517,6 +527,38 @@ class CockpitServicesTest(unittest.TestCase):
                 self.assertNotIn("Save Capture", html)
                 self.assertNotIn("Save Approvals", html)
                 self.assertNotIn("Generate / Refresh Workflow Handoff", html)
+            finally:
+                services.RUNS_DIR = original_runs_dir
+
+    def test_bulk_approve_endpoint_answers_and_approves_all_sections(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp)
+            try:
+                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+                manifest["capture"]["business_problem"] = {
+                    "status": "partial",
+                    "notes": "Keep this note.",
+                    "approved": False,
+                }
+                services.save_manifest(manifest)
+                client = TestClient(app)
+                response = client.post(f"/runs/{manifest['run_id']}/sections/approve-all")
+                self.assertEqual(response.status_code, 200)
+                payload = response.json()
+                self.assertTrue(payload["ok"])
+                self.assertTrue(payload["readiness"]["generation_ready"])
+                self.assertEqual(payload["readiness"]["capture_pct"], 100)
+                self.assertEqual(payload["readiness"]["approval_pct"], 100)
+                self.assertEqual(len(payload["sections"]), len(sections))
+                self.assertTrue(all(item["capture_status"] == "answered" for item in payload["sections"]))
+                self.assertTrue(all(item["approved"] for item in payload["sections"]))
+                updated = services.load_manifest(manifest["run_id"])
+                self.assertEqual(updated["capture"]["business_problem"]["notes"], "Keep this note.")
+                for section in sections:
+                    self.assertEqual(updated["capture"][section.id]["status"], "answered")
+                    self.assertTrue(updated["capture"][section.id]["approved"])
             finally:
                 services.RUNS_DIR = original_runs_dir
 

@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
 <header class="hero">
-  <img class="brand-mark" src="{{ url_for('static', path='alteryx-mark.svg') }}" alt="Alteryx">
+  <div class="brand-cluster">
+    <img class="brand-mark" data-role="bulk-approve-toggle" src="{{ url_for('static', path='alteryx-mark.svg') }}" alt="Alteryx" title="Double-click for cockpit controls">
+    {% if manifest %}
+      <button id="bulk-approve-button" class="secondary bulk-approve-button" type="button" data-approve-all-url="/runs/{{ manifest.run_id }}/sections/approve-all" hidden>Approve all for SOP</button>
+    {% endif %}
+  </div>
   <div>
     <p class="eyebrow">Internal Guided UI / V{{ app_version }}</p>
     <h1>Accelerator Cockpit</h1>
@@ -12,9 +17,9 @@
   </div>
   <div class="hero-panel">
     {% if readiness %}
-      <span class="score">{{ readiness.overall_pct }}%</span>
+      <span class="score" data-role="overall-score">{{ readiness.overall_pct }}%</span>
       <span class="score-label">SOP readiness</span>
-      <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
+      <span class="gate {{ readiness.workflow_gate }}" data-role="workflow-gate">{{ readiness.workflow_gate }}</span>
     {% else %}
       <span class="score">V{{ app_version }}</span>
       <span class="score-label">Accelerator cockpit</span>
@@ -97,7 +102,7 @@
       <section class="empty-state">
         <h2>Create a project, then attach transcript evidence</h2>
         <p>
-          V5.5 guides each section through evidence review, capture, approval, and
+          V5.7 guides each section through evidence review, capture, approval, and
           handoff preparation. Once a project exists, work section-by-section with
           autosave and advisory evidence playback.
         </p>
@@ -293,7 +298,7 @@
               SOP, captured assumptions, evidence, and generated accelerator assets.
             </p>
           </div>
-          <span class="gate {{ readiness.workflow_gate }}">{{ readiness.workflow_gate }}</span>
+          <span class="gate {{ readiness.workflow_gate }}" data-role="workflow-gate">{{ readiness.workflow_gate }}</span>
         </div>
 
         <div class="preflight-grid">
@@ -328,24 +333,21 @@
           </form>
         </div>
 
-        {% if readiness.blockers %}
-          <div class="blockers">
-            <h3>Workflow build blocked by:</h3>
-            <ul>
-              {% for blocker in readiness.blocker_items %}
-                <li>
-                  {% if blocker.section_id %}
-                    <button type="button" class="blocker-link" data-jump-section="{{ blocker.section_id }}">{{ blocker.message }}</button>
-                  {% else %}
-                    <button type="button" class="blocker-link" data-jump-target="generate-docs-button">{{ blocker.message }}</button>
-                  {% endif %}
-                </li>
-              {% endfor %}
-            </ul>
-          </div>
-        {% else %}
-          <p class="success">SOP gate is ready. The workflow handoff is ready for controlled build.</p>
-        {% endif %}
+        <div id="workflow-blockers" class="blockers" {% if not readiness.blockers %}hidden{% endif %}>
+          <h3>Workflow build blocked by:</h3>
+          <ul data-role="workflow-blocker-list">
+            {% for blocker in readiness.blocker_items %}
+              <li>
+                {% if blocker.section_id %}
+                  <button type="button" class="blocker-link" data-jump-section="{{ blocker.section_id }}">{{ blocker.message }}</button>
+                {% else %}
+                  <button type="button" class="blocker-link" data-jump-target="generate-docs-button">{{ blocker.message }}</button>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+        <p id="workflow-ready-message" class="success" {% if readiness.blockers %}hidden{% endif %}>SOP gate is ready. The workflow handoff is ready for controlled build.</p>
 
         <div class="workflow-actions">
           {% if prompt_artifact.exists %}
@@ -363,11 +365,8 @@
         </div>
         <p class="copy-status muted" aria-live="polite"></p>
 
-        {% if readiness.workflow_gate == "ready" and prompt_artifact.exists %}
-          <p class="success">Ready for controlled workflow build handoff. The prompt is project-specific and copy/paste-ready.</p>
-        {% else %}
-          <p class="muted">Resolve blockers, then generate the handoff files before workflow build.</p>
-        {% endif %}
+        <p id="workflow-ready-handoff-message" class="success" data-prompt-exists="{{ 'true' if prompt_artifact.exists else 'false' }}" {% if not (readiness.workflow_gate == "ready" and prompt_artifact.exists) %}hidden{% endif %}>Ready for controlled workflow build handoff. The prompt is project-specific and copy/paste-ready.</p>
+        <p id="workflow-resolve-message" class="muted" {% if readiness.workflow_gate == "ready" and prompt_artifact.exists %}hidden{% endif %}>Resolve blockers, then generate the handoff files before workflow build.</p>
 
         {% if workflow.detected_artifacts %}
           <details class="detected-artifacts">
@@ -385,6 +384,8 @@
 </main>
 <script>
   const debounceTimers = new Map();
+  const saveLocks = new Map();
+  const pendingSaves = new Map();
 
   function setChip(chip, baseClass, value, label) {
     if (!chip) return;
@@ -395,6 +396,47 @@
   function updateMetric(name, value) {
     const node = document.querySelector(`[data-metric="${name}"]`);
     if (node) node.textContent = `${value}%`;
+  }
+
+  function updateWorkflowHandoff(readiness) {
+    if (!readiness) return;
+    document.querySelectorAll('[data-role="workflow-gate"]').forEach((gate) => {
+      gate.className = `gate ${readiness.workflow_gate}`;
+      gate.textContent = readiness.workflow_gate;
+    });
+    const overallScore = document.querySelector('[data-role="overall-score"]');
+    if (overallScore) overallScore.textContent = `${readiness.overall_pct}%`;
+
+    const blockers = readiness.blocker_items || [];
+    const blockerPanel = document.querySelector("#workflow-blockers");
+    const blockerList = document.querySelector('[data-role="workflow-blocker-list"]');
+    const readyMessage = document.querySelector("#workflow-ready-message");
+    if (blockerPanel && blockerList) {
+      blockerPanel.hidden = blockers.length === 0;
+      blockerList.replaceChildren();
+      for (const blocker of blockers) {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "blocker-link";
+        button.textContent = blocker.message;
+        if (blocker.section_id) {
+          button.dataset.jumpSection = blocker.section_id;
+        } else {
+          button.dataset.jumpTarget = "generate-docs-button";
+        }
+        item.appendChild(button);
+        blockerList.appendChild(item);
+      }
+    }
+    if (readyMessage) readyMessage.hidden = blockers.length > 0;
+
+    const readyHandoff = document.querySelector("#workflow-ready-handoff-message");
+    const resolveMessage = document.querySelector("#workflow-resolve-message");
+    const promptExists = readyHandoff && readyHandoff.dataset.promptExists === "true";
+    const handoffReady = readiness.workflow_gate === "ready" && promptExists;
+    if (readyHandoff) readyHandoff.hidden = !handoffReady;
+    if (resolveMessage) resolveMessage.hidden = handoffReady;
   }
 
   function updateGenerateButton(readiness) {
@@ -436,7 +478,18 @@
     }
   }
 
-  async function saveSection(section, changedField = "") {
+  function applySectionState(section, payload) {
+    if (!section || !payload) return;
+    const statusInput = section.querySelector(`[data-field="status"][value="${CSS.escape(payload.capture_status)}"]`);
+    if (statusInput) statusInput.checked = true;
+    const approvalInput = section.querySelector('[data-field="approved"]');
+    if (approvalInput) approvalInput.checked = payload.approved;
+    setChip(section.querySelector('[data-role="capture-chip"]'), "status-chip capture", payload.capture_status, payload.capture_label);
+    setChip(section.querySelector('[data-role="approval-chip"]'), "status-chip approval", payload.approved ? "approved" : "pending", payload.approval_label);
+    setChip(section.querySelector('[data-role="evidence-chip"]'), "evidence", payload.evidence_status, payload.evidence_label);
+  }
+
+  async function persistSection(section, changedField = "") {
     const checkedStatus = section.querySelector('[data-field="status"]:checked');
     const status = checkedStatus ? checkedStatus.value : "not_set";
     const notes = section.querySelector('[data-field="notes"]').value;
@@ -451,20 +504,42 @@
       });
       if (!response.ok) throw new Error("Autosave failed");
       const payload = await response.json();
-      setChip(section.querySelector('[data-role="capture-chip"]'), "status-chip capture", payload.capture_status, payload.capture_label);
-      setChip(section.querySelector('[data-role="approval-chip"]'), "status-chip approval", payload.approved ? "approved" : "pending", payload.approval_label);
-      setChip(section.querySelector('[data-role="evidence-chip"]'), "evidence", payload.evidence_status, payload.evidence_label);
+      applySectionState(section, payload);
       updateMetric("capture_pct", payload.readiness.capture_pct);
       updateMetric("approval_pct", payload.readiness.approval_pct);
       updateMetric("artifact_pct", payload.readiness.artifact_pct);
       updateGenerateButton(payload.readiness);
       updateNextAction(payload.readiness);
+      updateWorkflowHandoff(payload.readiness);
       if (payload.auto_collapse) {
         section.open = false;
       }
       if (state) state.textContent = `Saved ${new Date().toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}`;
     } catch (error) {
       if (state) state.textContent = "Could not save. Try again.";
+    }
+  }
+
+  async function saveSection(section, changedField = "") {
+    const sectionId = section.dataset.sectionId;
+    const state = section.querySelector(".autosave-state");
+    if (saveLocks.get(sectionId)) {
+      pendingSaves.set(sectionId, changedField);
+      if (state) state.textContent = "Saving...";
+      return;
+    }
+
+    saveLocks.set(sectionId, true);
+    let fieldToSave = changedField;
+    try {
+      while (true) {
+        pendingSaves.delete(sectionId);
+        await persistSection(section, fieldToSave);
+        if (!pendingSaves.has(sectionId)) break;
+        fieldToSave = pendingSaves.get(sectionId) || "";
+      }
+    } finally {
+      saveLocks.delete(sectionId);
     }
   }
 
@@ -486,6 +561,51 @@
     clearTimeout(debounceTimers.get(section.dataset.sectionId));
     saveSection(section, input.dataset.field);
   });
+
+  const brandMark = document.querySelector('[data-role="bulk-approve-toggle"]');
+  const bulkApproveButton = document.querySelector("#bulk-approve-button");
+  if (brandMark && bulkApproveButton) {
+    brandMark.addEventListener("dblclick", () => {
+      bulkApproveButton.hidden = !bulkApproveButton.hidden;
+    });
+
+    bulkApproveButton.addEventListener("click", async () => {
+      const originalText = bulkApproveButton.textContent;
+      bulkApproveButton.disabled = true;
+      bulkApproveButton.textContent = "Approving...";
+      try {
+        const response = await fetch(bulkApproveButton.dataset.approveAllUrl, {method: "POST"});
+        if (!response.ok) throw new Error("Bulk approval failed");
+        const payload = await response.json();
+        for (const sectionPayload of payload.sections || []) {
+          const section = document.querySelector(`#section-${CSS.escape(sectionPayload.section_id)}`);
+          applySectionState(section, sectionPayload);
+          if (section) {
+            section.open = false;
+            const state = section.querySelector(".autosave-state");
+            if (state) state.textContent = "Approved for SOP";
+          }
+        }
+        updateMetric("capture_pct", payload.readiness.capture_pct);
+        updateMetric("approval_pct", payload.readiness.approval_pct);
+        updateMetric("artifact_pct", payload.readiness.artifact_pct);
+        updateGenerateButton(payload.readiness);
+        updateNextAction(payload.readiness);
+        updateWorkflowHandoff(payload.readiness);
+        bulkApproveButton.textContent = "All SOP approved";
+        setTimeout(() => {
+          bulkApproveButton.textContent = originalText;
+          bulkApproveButton.disabled = false;
+        }, 1300);
+      } catch (error) {
+        bulkApproveButton.textContent = "Could not approve";
+        setTimeout(() => {
+          bulkApproveButton.textContent = originalText;
+          bulkApproveButton.disabled = false;
+        }, 1800);
+      }
+    });
+  }
 
   document.addEventListener("click", (event) => {
     const blocker = event.target.closest(".blocker-link");
