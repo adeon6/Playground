@@ -86,10 +86,22 @@
         color: rgba(255, 255, 255, 0.78);
         font-weight: 700;
       }
-      .grid {
+      .content-stack {
+        width: min(860px, 100%);
+        margin: 16px auto 0;
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 16px;
+      }
+      .download-card {
+        text-align: center;
+      }
+      .download-card code {
+        text-align: left;
+      }
+      .download-card .button-row {
+        justify-content: center;
+      }
+      .download-note {
         margin-top: 16px;
       }
       .card {
@@ -135,15 +147,55 @@
       a.button.primary {
         background: #008f3a;
       }
-      .release-list {
-        margin: 0;
+      .patch-notes h2 {
+        margin-bottom: 6px;
+      }
+      .release-entry {
+        border-top: 1px solid var(--line);
+      }
+      .release-entry:first-of-type {
+        margin-top: 14px;
+      }
+      .release-entry summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 52px;
+        cursor: pointer;
+        font-weight: 800;
+        list-style: none;
+      }
+      .release-entry summary::-webkit-details-marker {
+        display: none;
+      }
+      .release-entry summary::after {
+        content: "+";
+        display: inline-grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        color: var(--teal);
+        font-size: 1.2rem;
+        line-height: 1;
+        flex: 0 0 auto;
+      }
+      .release-entry[open] summary::after {
+        content: "-";
+      }
+      .release-entry ul {
+        margin: 0 0 16px;
         padding-left: 1.1rem;
         color: var(--muted);
         line-height: 1.55;
       }
+      .release-entry li + li {
+        margin-top: 4px;
+      }
       @media (max-width: 820px) {
-        .hero,
-        .grid {
+        .hero {
           grid-template-columns: 1fr;
         }
         .version {
@@ -166,8 +218,8 @@
           <span>Release package</span>
         </div>
       </section>
-      <section class="grid">
-        <article class="card">
+      <section class="content-stack">
+        <article class="card download-card">
           <h2>Run Locally</h2>
           <p class="muted">Download the ZIP, extract the app folder, then double-click:</p>
           <code>csm-accelerator-cockpit-v5.4\Start Accelerator Cockpit.bat</code>
@@ -177,18 +229,79 @@
             <a class="button" href="./downloads/csm-accelerator-cockpit-v5.4-with-global-skills.zip">Download V5.4 + Global Skills ZIP</a>
             <a class="button" href="https://github.com/adeon6/Playground/tree/main/pages/csm-cockpit">Open GitHub Folder</a>
           </div>
-          <p class="muted">Use the standard ZIP for self-contained cockpit projects. Use the global-skills ZIP only when you also want to update Codex's global Alteryx workflow skills on that machine.</p>
+          <p class="muted download-note">Use the standard ZIP for self-contained cockpit projects. Use the global-skills ZIP only when you also want to update Codex's global Alteryx workflow skills on that machine.</p>
         </article>
-        <article class="card">
-          <h2>Release Notes</h2>
-          <ul class="release-list">
-            <li>Uses one final readiness snapshot for SOP, architecture assessment, handoff files, and pipeline status.</li>
-            <li>Condenses the guided capture sections with one-line notes, inline approval, shorter tags, and collapsed review snippets.</li>
-            <li>Ships project-local workflow-builder and beautification tooling as the source of truth for reproducible Codex builds.</li>
-            <li>Forces workflow handoff prompts to read bundled skill instructions, rules, and validation scripts before workflow design.</li>
-            <li>Adds an optional package that installs or updates the global Codex Alteryx workflow-builder and beautification skills.</li>
-            <li>Removes user-facing implementation and owner-specific language from the cockpit experience.</li>
-          </ul>
+        <article class="card patch-notes">
+          <h2>Patch Notes</h2>
+          <p class="muted">Version history for the local cockpit package.</p>
+          <details class="release-entry">
+            <summary><span>V5.4</span></summary>
+            <ul>
+              <li>Added two downloads: standard self-contained package and optional global-skills package.</li>
+              <li>Added a local installer that updates Codex global Alteryx workflow-builder and beautification skills.</li>
+              <li>Installer backs up existing global skills and writes an install report.</li>
+            </ul>
+          </details>
+          <details class="release-entry">
+            <summary><span>V5.3</span></summary>
+            <ul>
+              <li>Made workflow handoffs reproducible across machines using project-local builder and beautification tooling.</li>
+              <li>Added `tooling_manifest.json` to generated projects.</li>
+              <li>Forced generated Codex prompts to read local skill instructions, rules, and validation scripts before workflow design.</li>
+            </ul>
+          </details>
+          <details class="release-entry">
+            <summary><span>V5.2</span></summary>
+            <ul>
+              <li>Moved section collapse to the explicit SOP approval checkbox.</li>
+              <li>Added compact next-action guidance.</li>
+              <li>Improved review-snippet affordances and responsive section layout.</li>
+            </ul>
+          </details>
+          <details class="release-entry">
+            <summary><span>V5.1</span></summary>
+            <ul>
+              <li>Fixed stale readiness by using one final snapshot for SOP, assessment, handoff, and pipeline status.</li>
+              <li>Condensed guided capture sections with one-line notes, inline approval, shorter tags, and collapsed snippets.</li>
+              <li>Removed user-facing owner, CSM, and implementation-specific language.</li>
+            </ul>
+          </details>
+          <details class="release-entry">
+            <summary><span>V5</span></summary>
+            <ul>
+              <li>Aligned generated project outputs to the accelerator operating-system folder structure.</li>
+              <li>Treated transcript evidence as advisory rather than workflow-blocking.</li>
+              <li>Bundled workflow-builder and beautification tooling for SOP-to-workflow handoff.</li>
+            </ul>
+          </details>
+          <details class="release-entry">
+            <summary><span>V4.4</span></summary>
+            <ul>
+              <li>Simplified the guided UI around the discovery template.</li>
+              <li>Removed separate Human Approval, Artifact Dashboard, evidence percentage card, and manual save buttons.</li>
+              <li>Improved section status and approval flow.</li>
+            </ul>
+          </details>
+          <details class="release-entry">
+            <summary><span>V4.3</span></summary>
+            <ul>
+              <li>Added customer-facing accelerator asset drafts.</li>
+              <li>Added `peer_review_status.json` for internal versus customer-facing asset review.</li>
+            </ul>
+          </details>
+          <details class="release-entry">
+            <summary><span>V4.2</span></summary>
+            <ul>
+              <li>Added canonical project root and identity hash to workflow prompts and manifests.</li>
+              <li>Made workflow handoff fail closed on path, project ID, SOP gate, or identity mismatch.</li>
+            </ul>
+          </details>
+          <details class="release-entry">
+            <summary><span>V4.1</span></summary>
+            <ul>
+              <li>First documented local cockpit download package on the GitHub Pages release page.</li>
+            </ul>
+          </details>
         </article>
       </section>
     </main>
