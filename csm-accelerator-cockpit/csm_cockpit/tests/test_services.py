@@ -173,13 +173,53 @@ class CockpitServicesTest(unittest.TestCase):
                 self.assertTrue(helper_path.exists())
                 self.assertTrue(build_manifest_path.exists())
                 prompt_text = prompt_path.read_text(encoding="utf-8")
+                build_manifest = json.loads(build_manifest_path.read_text(encoding="utf-8"))
                 self.assertIn("Mandatory Local Tooling Gate", prompt_text)
                 self.assertIn("tooling/tooling_manifest.json", prompt_text)
                 self.assertIn("project-local tooling wins", prompt_text)
+                self.assertEqual(build_manifest["project_tooling"]["cockpit_version"], services.APP_VERSION)
                 self.assertTrue((Path(tmp) / manifest["run_id"] / "tooling" / "tooling_manifest.json").exists())
                 self.assertTrue((Path(tmp) / manifest["run_id"] / "03_workflow_build" / "status" / "next_stage_prompt.md").exists())
                 readiness = services.calculate_readiness(manifest, sections)
                 self.assertEqual(readiness["workflow_gate"], "ready")
+            finally:
+                services.RUNS_DIR = original_runs_dir
+
+    def test_generate_docs_refreshes_stale_project_tooling_for_existing_project(self) -> None:
+        sections = services.JON_SECTIONS
+        with tempfile.TemporaryDirectory() as tmp:
+            original_runs_dir = services.RUNS_DIR
+            services.RUNS_DIR = Path(tmp)
+            try:
+                manifest = services.new_manifest("Test Customer", "Test Accelerator", "Ada", sections)
+                for section in sections:
+                    manifest["capture"][section.id]["status"] = "answered"
+                    manifest["capture"][section.id]["notes"] = f"{section.label} notes"
+                    manifest["capture"][section.id]["approved"] = True
+                manifest["analysis"] = {
+                    section.id: {"status": "supported", "score": 9, "evidence": [], "summary": "Supported.", "recommendation": "Approved."}
+                    for section in sections
+                }
+
+                project_dir = Path(tmp) / manifest["run_id"]
+                stale_builder = project_dir / "tooling" / "alteryx_workflow_builder"
+                stale_builder.mkdir(parents=True, exist_ok=True)
+                (stale_builder / "STALE.txt").write_text("old tooling", encoding="utf-8")
+                stale_manifest = project_dir / "tooling" / "tooling_manifest.json"
+                stale_manifest.write_text(json.dumps({"cockpit_version": "0.0", "bundles": {}}, indent=2), encoding="utf-8")
+
+                manifest = services.generate_docs(manifest, sections)
+
+                tooling_manifest = json.loads((project_dir / "tooling" / "tooling_manifest.json").read_text(encoding="utf-8"))
+                build_manifest = json.loads(Path(manifest["artifacts"][services.WORKFLOW_MANIFEST_ARTIFACT]["path"]).read_text(encoding="utf-8"))
+                prompt_text = Path(manifest["artifacts"][services.WORKFLOW_PROMPT_ARTIFACT]["path"]).read_text(encoding="utf-8")
+
+                self.assertFalse((stale_builder / "STALE.txt").exists())
+                self.assertEqual(tooling_manifest["cockpit_version"], services.APP_VERSION)
+                self.assertEqual(build_manifest["project_tooling"]["cockpit_version"], services.APP_VERSION)
+                self.assertEqual(manifest["workflow_build"]["project_tooling_cockpit_version"], services.APP_VERSION)
+                self.assertIn("Mandatory Local Tooling Gate", prompt_text)
+                self.assertIn("A vertical stacked workflow fails visual acceptance", prompt_text)
             finally:
                 services.RUNS_DIR = original_runs_dir
 
@@ -451,7 +491,7 @@ class CockpitServicesTest(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 html = response.text
                 self.assertIn("Accelerator Cockpit", html)
-                self.assertIn("Internal Guided UI / V5.4", html)
+                self.assertIn("Internal Guided UI / V5.5", html)
                 self.assertIn("Capture And Approval", html)
                 self.assertIn("Discovery questions", html)
                 self.assertIn("Review snippets (0)", html)

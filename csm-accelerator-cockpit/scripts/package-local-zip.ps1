@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $PSScriptRoot
 $RepoRoot = Split-Path -Parent $Root
-$Version = "5.4"
+$Version = "5.5"
 $StandardPackageName = "csm-accelerator-cockpit-v$Version-local.zip"
 $StandardRootName = "csm-accelerator-cockpit-v$Version"
 $GlobalSkillsPackageName = "csm-accelerator-cockpit-v$Version-with-global-skills.zip"

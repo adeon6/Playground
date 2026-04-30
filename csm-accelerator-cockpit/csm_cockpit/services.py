@@ -14,7 +14,7 @@ from typing import Any
 from docx import Document
 
 
-APP_VERSION = "5.4"
+APP_VERSION = "5.5"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 COCKPIT_ROOT = Path(__file__).resolve().parent
@@ -591,11 +591,11 @@ def manifest_path(run_id: str) -> Path:
     return primary
 
 
-def ensure_project_structure(project_dir: Path) -> None:
+def ensure_project_structure(project_dir: Path) -> dict[str, Any]:
     for folder in PROJECT_FOLDERS:
         (project_dir / folder).mkdir(parents=True, exist_ok=True)
     _sync_process_pack_scaffold(project_dir)
-    _sync_project_tooling(project_dir)
+    return _sync_project_tooling(project_dir)
 
 
 def _copytree_fresh(source: Path, target: Path) -> None:
@@ -619,7 +619,7 @@ def _copytree_fresh(source: Path, target: Path) -> None:
     )
 
 
-def _sync_project_tooling(project_dir: Path) -> None:
+def _sync_project_tooling(project_dir: Path) -> dict[str, Any]:
     """Keep each handoff project self-contained for local Codex."""
     tooling_target = project_dir / "tooling"
     builder_target = tooling_target / "alteryx_workflow_builder"
@@ -629,7 +629,7 @@ def _sync_project_tooling(project_dir: Path) -> None:
             shutil.rmtree(target)
     _copytree_fresh(TOOLING_DIR / "alteryx_workflow_builder", builder_target)
     _copytree_fresh(TOOLING_DIR / "alteryx-beautification", beauty_target)
-    _write_tooling_manifest(project_dir)
+    return _write_tooling_manifest(project_dir)
 
 
 def _directory_digest(path: Path) -> dict[str, Any]:
@@ -651,7 +651,7 @@ def _directory_digest(path: Path) -> dict[str, Any]:
     return {"exists": True, "file_count": file_count, "sha256": digest.hexdigest()}
 
 
-def _write_tooling_manifest(project_dir: Path) -> None:
+def _write_tooling_manifest(project_dir: Path) -> dict[str, Any]:
     tooling_target = project_dir / "tooling"
     manifest = {
         "schema_version": 1,
@@ -672,6 +672,7 @@ def _write_tooling_manifest(project_dir: Path) -> None:
     }
     tooling_target.mkdir(parents=True, exist_ok=True)
     (tooling_target / "tooling_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    return manifest
 
 
 def _sync_process_pack_scaffold(project_dir: Path) -> None:
@@ -1963,7 +1964,7 @@ def generate_workflow_build_handoff(
     readiness: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     project_dir = run_dir(manifest["run_id"])
-    ensure_project_structure(project_dir)
+    project_tooling = ensure_project_structure(project_dir)
     status_dir = project_dir / WORKFLOW_STATUS_DIR
     status_dir.mkdir(parents=True, exist_ok=True)
     readiness = readiness or calculate_readiness(_refresh_artifact_records(manifest), sections)
@@ -2023,6 +2024,7 @@ def generate_workflow_build_handoff(
         "transcripts": manifest.get("transcripts", []),
         "demo_mode": manifest.get("transcript", {}).get("demo_mode", False),
         "preflight": preflight,
+        "project_tooling": project_tooling,
         "expected_outputs": [
             f"{WORKFLOW_OUTPUT_DIR}/main.yxmd",
             f"{WORKFLOW_STATUS_DIR}/workflow_spec.json",
@@ -2046,6 +2048,8 @@ def generate_workflow_build_handoff(
             "helper_script_path": str(helper_path),
             "manifest_path": str(build_manifest_path),
             "generated_at": generated_at,
+            "project_tooling_manifest": str(project_dir / "tooling" / "tooling_manifest.json"),
+            "project_tooling_cockpit_version": project_tooling.get("cockpit_version", ""),
             **{key: preflight[key] for key in ["codex_detected", "codex_path", "codex_detection_note", "designer_detected", "engine_path", "designer_path", "tooling_bundle_version", "builder_toolkit_ready", "beautification_ready"]},
         }
     )

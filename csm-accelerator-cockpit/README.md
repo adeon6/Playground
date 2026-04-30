@@ -7,7 +7,7 @@ GitHub Pages hosts the landing page and downloadable ZIP. The real app runs loca
 ## Quick Start
 
 1. Download or clone this folder.
-2. Extract the ZIP into a fresh folder. The standard ZIP opens as `csm-accelerator-cockpit-v5.4`.
+2. Extract the ZIP into a fresh folder. The standard ZIP opens as `csm-accelerator-cockpit-v5.5`.
 3. Double-click `Start Accelerator Cockpit.bat`.
 4. Wait for the browser to open.
 5. Create a new accelerator project, attach transcript evidence, work the guided sections, approve sections inline, and generate docs.
@@ -17,7 +17,7 @@ The launcher creates a private `.venv`, installs dependencies from `requirements
 
 ## What Is The Brain?
 
-V5.4 uses an explainable local rules engine for transcript coverage, not a hidden hosted AI model.
+V5.5 uses an explainable local rules engine for transcript coverage, not a hidden hosted AI model.
 
 - It accepts `.docx`, `.md`, and `.txt` transcripts.
 - It supports additive follow-up transcripts, building one combined evidence corpus.
@@ -35,8 +35,10 @@ Optional OpenAI-assisted evidence extraction can be added later, but it is delib
 
 ## Download Options
 
-- `csm-accelerator-cockpit-v5.4-local.zip` is the standard self-contained package. It bundles project-local workflow-builder and beautification tooling, writes a tooling manifest, and forces generated workflow prompts to use that local tooling.
-- `csm-accelerator-cockpit-v5.4-with-global-skills.zip` includes the same cockpit plus `Install Or Update Codex Alteryx Skills.bat`. Run that installer only if you also want future Codex sessions outside cockpit projects to use the same global Alteryx workflow-builder and beautification skills.
+- `csm-accelerator-cockpit-v5.5-local.zip` is the standard self-contained package. It bundles project-local workflow-builder and beautification tooling, writes a tooling manifest, and forces generated workflow prompts to use that local tooling.
+- `csm-accelerator-cockpit-v5.5-with-global-skills.zip` includes the same cockpit plus `Install Or Update Codex Alteryx Skills.bat`. Run that installer only if you also want future Codex sessions outside cockpit projects to use the same global Alteryx workflow-builder and beautification skills.
+
+Existing projects remain reusable across cockpit updates. Open the old project in the newer cockpit and click Generate / Refresh Handoff Files; the cockpit refreshes the project's bundled process pack, workflow-builder tooling, beautification tooling, prompt, and handoff manifest in place.
 
 ## Workflow Build Handoff
 
@@ -70,6 +72,8 @@ V5.2 moves section collapse to the explicit SOP approval checkbox, adds a compac
 V5.3 makes workflow-build handoffs reproducible across machines by refreshing the bundled Alteryx builder/beautification tooling at package time, writing a project-local tooling manifest, and forcing generated Codex prompts to read and use the project-local tooling before workflow design.
 
 V5.4 adds a second optional download package that can install or update the two global Codex Alteryx skills from the bundled package, while keeping the standard package fully self-contained and unchanged in behavior.
+
+V5.5 makes the existing-project refresh guarantee explicit: regenerating documents and the Codex prompt from a newer cockpit refreshes project-local tooling, records the refreshed cockpit version in the workflow handoff manifest, and keeps old project work reusable.
 
 ## Process Pack
 
