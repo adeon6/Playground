@@ -10,6 +10,8 @@
 ## Container Rules
 
 - Every actual Alteryx tool should live inside a clearly titled container.
+- "Inside" means Designer-native XML containment: executable tools must be children under the ToolContainer's `<ChildNodes>`, not merely positioned over an empty container rectangle.
+- Do not use ToolContainers as decorative backplates for root-level tools. Designer can collapse or shrink empty containers after open, run, or refresh, leaving tools visually outside their sections.
 - Container colors should feel semantically related to the dominant tool family inside them.
 - Prefer light fills with stronger borders and readable text contrast.
 - Containers should clarify structure, not just box everything for decoration.
@@ -47,6 +49,7 @@ Use this profile when the workflow should be presentable to a customer, CSM, or 
 - Fan-out branches should have visible separation.
 - Merge hubs should sit where the eye expects them, not where they happened to land.
 - When a refactor moves a container, also reflow the tools inside it.
+- After converting tools into real container children, re-render and, when possible, reopen/run in Designer to confirm the container body remains intact.
 
 ## Readability Tradeoffs
 

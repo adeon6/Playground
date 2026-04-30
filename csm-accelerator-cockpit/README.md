@@ -7,7 +7,7 @@ GitHub Pages hosts the landing page and downloadable ZIP. The real app runs loca
 ## Quick Start
 
 1. Download or clone this folder.
-2. Extract the ZIP into a fresh folder. The current ZIP opens as `csm-accelerator-cockpit-v5.1`.
+2. Extract the ZIP into a fresh folder. The current ZIP opens as `csm-accelerator-cockpit-v5.3`.
 3. Double-click `Start Accelerator Cockpit.bat`.
 4. Wait for the browser to open.
 5. Create a new accelerator project, attach transcript evidence, work the guided sections, approve sections inline, and generate docs.
@@ -17,7 +17,7 @@ The launcher creates a private `.venv`, installs dependencies from `requirements
 
 ## What Is The Brain?
 
-V5.1 uses an explainable local rules engine for transcript coverage, not a hidden hosted AI model.
+V5.3 uses an explainable local rules engine for transcript coverage, not a hidden hosted AI model.
 
 - It accepts `.docx`, `.md`, and `.txt` transcripts.
 - It supports additive follow-up transcripts, building one combined evidence corpus.
@@ -44,7 +44,7 @@ The cockpit prepares a controlled workflow-build handoff package:
 
 The ZIP also bundles the local Alteryx workflow-builder toolkit, the refreshed customer-facing hybrid reference workflow, and beautification guidance under `tooling/`. When the SOP gate is ready, the UI can copy the hydrated prompt and open the workflow folder.
 
-Bundled workflow-builder and beautification tooling must be refreshed and checked against the global `.codex` skills during every Cockpit release. The global skills are the source of truth; the bundled copies are distribution snapshots.
+Bundled workflow-builder and beautification tooling must be refreshed and checked against the global `.codex` skills during every Cockpit release. The generated project-local `tooling/` folder is the source of truth for downstream workflow builds, so colleagues do not need matching global skills installed.
 
 V4.2 also writes an absolute canonical project root and identity hash into the generated prompt and manifest. The handoff is instructed to fail closed if the path, project ID, SOP gate, or identity hash does not match, and not to fallback-search nearby projects.
 
@@ -59,6 +59,10 @@ V5 aligns generated project outputs to the operating-system folder structure, tr
 V5 also makes the reference-workflow boundary explicit: the hybrid workflow reference is visual grammar only. The build must not copy its schemas, formulas, tool sequence, output shape, or business entities unless the current approved SOP independently requires them.
 
 V5.1 fixes stale readiness in generated SOP/assessment markdown, tightens the guided section layout, and refreshes the UI toward a cleaner Alteryx-inspired internal style.
+
+V5.2 moves section collapse to the explicit SOP approval checkbox, adds a compact next-action strip, improves review-snippet affordances, and tightens responsive section layout.
+
+V5.3 makes workflow-build handoffs reproducible across machines by refreshing the bundled Alteryx builder/beautification tooling at package time, writing a project-local tooling manifest, and forcing generated Codex prompts to read and use the project-local tooling before workflow design.
 
 ## Process Pack
 

@@ -156,7 +156,7 @@ def _mode_for_workflow(path: Path, mode_arg: str) -> str:
 
 def _tier2_semantic_checks(root: ET.Element, plugin_map: dict[str, str]) -> list[str]:
     errors: list[str] = []
-    for node in root.findall(".//Nodes/Node"):
+    for node in root.findall(".//Node"):
         tool_id = node.attrib.get("ToolID", "")
         gs = node.find("./GuiSettings")
         plugin = gs.attrib.get("Plugin", "") if gs is not None else ""
@@ -297,7 +297,7 @@ def _profile_availability_checks(root: ET.Element, profile: str, registry: dict[
     ops = registry.get("ops") or {}
     all_plugins = _all_plugin_map(registry)
 
-    for node in root.findall(".//Nodes/Node"):
+    for node in root.findall(".//Node"):
         tool_id = node.attrib.get("ToolID", "")
         gs = node.find("./GuiSettings")
         plugin = gs.attrib.get("Plugin", "") if gs is not None else ""
@@ -350,7 +350,7 @@ def lint_workflow(
     if expected_version and yxmd_ver != expected_version:
         result.errors.append(f"yxmdVer is '{yxmd_ver}', expected '{expected_version}'")
 
-    for node in root.findall(".//Nodes/Node"):
+    for node in root.findall(".//Node"):
         tool_id = node.attrib.get("ToolID", "")
         gs = node.find("./GuiSettings")
         if gs is None:
@@ -391,7 +391,7 @@ def lint_workflow(
     if mode == "starter_kit":
         stem = path.name
         is_toc = stem.startswith("01_")
-        for node in root.findall(".//Nodes/Node"):
+        for node in root.findall(".//Node"):
             tool_id = node.attrib.get("ToolID", "")
             gs = node.find("./GuiSettings")
             plugin = gs.attrib.get("Plugin", "") if gs is not None else ""
@@ -405,7 +405,7 @@ def lint_workflow(
                     result.errors.append(f"ToolID={tool_id}: starter_kit mode requires deterministic output naming, got '{out_base}'")
 
     plugin_by_tool_id: dict[str, str] = {}
-    for node in root.findall(".//Nodes/Node"):
+    for node in root.findall(".//Node"):
         tid = node.attrib.get("ToolID", "")
         if not tid:
             continue
@@ -419,7 +419,7 @@ def lint_workflow(
         plugin = plugin_by_tool_id.get(tid, "")
         if plugin in NON_EXECUTABLE_GUI_PLUGINS:
             continue
-        node = root.find(f".//Nodes/Node[@ToolID='{tid}']")
+        node = root.find(f".//Node[@ToolID='{tid}']")
         deps = node.find("./Properties/Dependencies/Implicit") if node is not None else None
         if plugin in IMPLICIT_DISCONNECTED_OK_PLUGINS and deps is not None:
             continue

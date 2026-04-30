@@ -172,6 +172,11 @@ class CockpitServicesTest(unittest.TestCase):
                 self.assertTrue(prompt_path.exists())
                 self.assertTrue(helper_path.exists())
                 self.assertTrue(build_manifest_path.exists())
+                prompt_text = prompt_path.read_text(encoding="utf-8")
+                self.assertIn("Mandatory Local Tooling Gate", prompt_text)
+                self.assertIn("tooling/tooling_manifest.json", prompt_text)
+                self.assertIn("project-local tooling wins", prompt_text)
+                self.assertTrue((Path(tmp) / manifest["run_id"] / "tooling" / "tooling_manifest.json").exists())
                 self.assertTrue((Path(tmp) / manifest["run_id"] / "03_workflow_build" / "status" / "next_stage_prompt.md").exists())
                 readiness = services.calculate_readiness(manifest, sections)
                 self.assertEqual(readiness["workflow_gate"], "ready")
@@ -446,9 +451,12 @@ class CockpitServicesTest(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 html = response.text
                 self.assertIn("Accelerator Cockpit", html)
-                self.assertIn("Internal Guided UI / V5.1", html)
+                self.assertIn("Internal Guided UI / V5.3", html)
                 self.assertIn("Capture And Approval", html)
                 self.assertIn("Discovery questions", html)
+                self.assertIn("Review snippets (0)", html)
+                self.assertIn("Next action", html)
+                self.assertIn('data-role="next-action-message"', html)
                 self.assertIn("Handoff files", html)
                 self.assertIn("Generate / Refresh Handoff Files", html)
                 self.assertIn("Approve for SOP handoff", html)
@@ -472,7 +480,7 @@ class CockpitServicesTest(unittest.TestCase):
             finally:
                 services.RUNS_DIR = original_runs_dir
 
-    def test_autosave_collapse_only_for_answered_status_change(self) -> None:
+    def test_autosave_collapse_only_for_approval_confirmation(self) -> None:
         sections = services.JON_SECTIONS
         with tempfile.TemporaryDirectory() as tmp:
             original_runs_dir = services.RUNS_DIR
@@ -486,14 +494,21 @@ class CockpitServicesTest(unittest.TestCase):
                     json={"status": "answered", "notes": "", "approved": False, "changed_field": "status"},
                 )
                 self.assertEqual(status_response.status_code, 200)
-                self.assertTrue(status_response.json()["auto_collapse"])
+                self.assertFalse(status_response.json()["auto_collapse"])
 
                 approval_response = client.post(
                     f"/runs/{manifest['run_id']}/section/business_problem",
                     json={"status": "answered", "notes": "", "approved": True, "changed_field": "approved"},
                 )
                 self.assertEqual(approval_response.status_code, 200)
-                self.assertFalse(approval_response.json()["auto_collapse"])
+                self.assertTrue(approval_response.json()["auto_collapse"])
+
+                unapproval_response = client.post(
+                    f"/runs/{manifest['run_id']}/section/business_problem",
+                    json={"status": "answered", "notes": "", "approved": False, "changed_field": "approved"},
+                )
+                self.assertEqual(unapproval_response.status_code, 200)
+                self.assertFalse(unapproval_response.json()["auto_collapse"])
             finally:
                 services.RUNS_DIR = original_runs_dir
 

@@ -97,7 +97,7 @@
       <section class="empty-state">
         <h2>Create a project, then attach transcript evidence</h2>
         <p>
-          V5.1 guides each section through evidence review, capture, approval, and
+          V5.3 guides each section through evidence review, capture, approval, and
           handoff preparation. Once a project exists, work section-by-section with
           autosave and advisory evidence playback.
         </p>
@@ -115,6 +115,21 @@
           <div><strong data-metric="artifact_pct">{{ readiness.artifact_pct }}%</strong><span>artifacts</span></div>
         </div>
       </section>
+
+      {% if readiness.blocker_items %}
+        {% set next_blocker = readiness.blocker_items[0] %}
+        <section class="next-action-strip" id="next-action-strip">
+          <div>
+            <p class="eyebrow">Next action</p>
+            <strong data-role="next-action-message">{{ next_blocker.message }}</strong>
+          </div>
+          {% if next_blocker.section_id %}
+            <button type="button" class="blocker-link next-action-link" data-role="next-action-button" data-jump-section="{{ next_blocker.section_id }}">Open section</button>
+          {% else %}
+            <button type="button" class="blocker-link next-action-link" data-role="next-action-button" data-jump-target="generate-docs-button">Open action</button>
+          {% endif %}
+        </section>
+      {% endif %}
 
       <section class="card split-card" id="transcript-review">
         <div>
@@ -174,6 +189,7 @@
             {% set evidence_status = analysis.status or 'not_run' %}
             {% set approval_status = 'approved' if item.approved else 'pending' %}
             {% set should_open = section.required and capture_status in ['not_set', 'partial', 'not_answered', 'needs_follow_up'] %}
+            {% set evidence_count = analysis.evidence|length if analysis.evidence else 0 %}
             <details id="section-{{ section.id }}" class="section-row autosave-section" data-section-id="{{ section.id }}" data-save-url="/runs/{{ manifest.run_id }}/section/{{ section.id }}" {% if should_open %}open{% endif %}>
               <summary>
                 <span>
@@ -204,7 +220,8 @@
                   </details>
                   <details class="snippet-list">
                     <summary>
-                      <span>Review snippets</span>
+                      <span>Review snippets ({{ evidence_count }})</span>
+                      <em class="snippet-status {{ evidence_status }}">{{ evidence_statuses.get(evidence_status, 'Not run') }}</em>
                     </summary>
                     <p class="evidence-summary">{{ analysis.summary or analysis.recommendation or "Attach evidence or capture this as a follow-up." }}</p>
                     {% if analysis.evidence %}
@@ -395,6 +412,30 @@
     help.textContent = `Complete section statuses and approvals first. Missing: ${firstItems}${more}.`;
   }
 
+  function updateNextAction(readiness) {
+    const strip = document.querySelector("#next-action-strip");
+    if (!strip || !readiness) return;
+    const message = strip.querySelector('[data-role="next-action-message"]');
+    const button = strip.querySelector('[data-role="next-action-button"]');
+    const blocker = (readiness.blocker_items || [])[0];
+    if (!message || !button) return;
+    if (!blocker) {
+      strip.hidden = true;
+      return;
+    }
+    strip.hidden = false;
+    message.textContent = blocker.message;
+    delete button.dataset.jumpSection;
+    delete button.dataset.jumpTarget;
+    if (blocker.section_id) {
+      button.dataset.jumpSection = blocker.section_id;
+      button.textContent = "Open section";
+    } else {
+      button.dataset.jumpTarget = "generate-docs-button";
+      button.textContent = "Open action";
+    }
+  }
+
   async function saveSection(section, changedField = "") {
     const checkedStatus = section.querySelector('[data-field="status"]:checked');
     const status = checkedStatus ? checkedStatus.value : "not_set";
@@ -417,10 +458,9 @@
       updateMetric("approval_pct", payload.readiness.approval_pct);
       updateMetric("artifact_pct", payload.readiness.artifact_pct);
       updateGenerateButton(payload.readiness);
+      updateNextAction(payload.readiness);
       if (payload.auto_collapse) {
         section.open = false;
-      } else if (changedField === "status") {
-        section.open = payload.should_open;
       }
       if (state) state.textContent = `Saved ${new Date().toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}`;
     } catch (error) {

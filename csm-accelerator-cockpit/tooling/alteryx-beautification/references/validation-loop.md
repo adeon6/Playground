@@ -2,7 +2,7 @@
 
 ## Required Mindset
 
-XML validity is necessary but not sufficient. A beautified workflow is only done when the validator is happy, the render looks clean, and the runtime behavior still holds.
+XML validity is necessary but not sufficient. A beautified workflow is only done when the validator is happy, the render looks clean, runtime behavior still holds, and Designer preserves the intended container layout after open/run/refresh.
 
 ## Recommended Loop
 
@@ -19,6 +19,10 @@ XML validity is necessary but not sufficient. A beautified workflow is only done
    - container crowding
    - dead space
 7. If output values matter, run the Alteryx engine and confirm outputs still match expectations.
+8. After engine execution or Designer run, inspect the workflow again for post-run visual drift:
+   - containers must remain expanded with their tools inside
+   - no section should collapse to an empty header unless intentionally folded
+   - documentation containers must still contain their text boxes
 
 ## Commands
 
@@ -38,3 +42,4 @@ If those exact paths do not exist in the current environment, use the equivalent
 - Text boxes and containers may show up as disconnected in static lint; that is usually acceptable.
 - Real connector or containment failures are not acceptable.
 - A render that still looks tangled is a failure even if the verifier passes.
+- A preview with section boxes behind tools is not enough proof of containment. Confirm the XML uses ToolContainer `<ChildNodes>` or verify in Designer after run.

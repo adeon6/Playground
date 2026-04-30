@@ -14,7 +14,7 @@ from typing import Any
 from docx import Document
 
 
-APP_VERSION = "5.1"
+APP_VERSION = "5.3"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 COCKPIT_ROOT = Path(__file__).resolve().parent
@@ -622,8 +622,56 @@ def _copytree_fresh(source: Path, target: Path) -> None:
 def _sync_project_tooling(project_dir: Path) -> None:
     """Keep each handoff project self-contained for local Codex."""
     tooling_target = project_dir / "tooling"
-    _copytree_fresh(TOOLING_DIR / "alteryx_workflow_builder", tooling_target / "alteryx_workflow_builder")
-    _copytree_fresh(TOOLING_DIR / "alteryx-beautification", tooling_target / "alteryx-beautification")
+    builder_target = tooling_target / "alteryx_workflow_builder"
+    beauty_target = tooling_target / "alteryx-beautification"
+    for target in (builder_target, beauty_target):
+        if target.exists():
+            shutil.rmtree(target)
+    _copytree_fresh(TOOLING_DIR / "alteryx_workflow_builder", builder_target)
+    _copytree_fresh(TOOLING_DIR / "alteryx-beautification", beauty_target)
+    _write_tooling_manifest(project_dir)
+
+
+def _directory_digest(path: Path) -> dict[str, Any]:
+    digest = hashlib.sha256()
+    file_count = 0
+    if not path.exists():
+        return {"exists": False, "file_count": 0, "sha256": ""}
+    for file_path in sorted(p for p in path.rglob("*") if p.is_file()):
+        if any(part in {"__pycache__", ".pytest_cache", ".mypy_cache", ".git"} for part in file_path.parts):
+            continue
+        if file_path.suffix.lower() in {".pyc", ".pyo"}:
+            continue
+        relative = file_path.relative_to(path).as_posix()
+        digest.update(relative.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(file_path.read_bytes())
+        digest.update(b"\0")
+        file_count += 1
+    return {"exists": True, "file_count": file_count, "sha256": digest.hexdigest()}
+
+
+def _write_tooling_manifest(project_dir: Path) -> None:
+    tooling_target = project_dir / "tooling"
+    manifest = {
+        "schema_version": 1,
+        "generated_at": utc_now(),
+        "cockpit_version": APP_VERSION,
+        "source_of_truth": "project-local bundled tooling",
+        "usage_policy": "Codex must read and use the project-local tooling paths before workflow design.",
+        "bundles": {
+            "alteryx_workflow_builder": {
+                "path": "tooling/alteryx_workflow_builder",
+                **_directory_digest(tooling_target / "alteryx_workflow_builder"),
+            },
+            "alteryx-beautification": {
+                "path": "tooling/alteryx-beautification",
+                **_directory_digest(tooling_target / "alteryx-beautification"),
+            },
+        },
+    }
+    tooling_target.mkdir(parents=True, exist_ok=True)
+    (tooling_target / "tooling_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
 
 def _sync_process_pack_scaffold(project_dir: Path) -> None:
@@ -1684,6 +1732,7 @@ def _workflow_handoff_prompt(manifest: dict[str, Any], readiness: dict[str, Any]
     blockers = "\n".join(f"- {blocker}" for blocker in readiness["blockers"]) or "- None"
     builder_path = project_dir / "tooling" / "alteryx_workflow_builder"
     beautification_path = project_dir / "tooling" / "alteryx-beautification"
+    tooling_manifest_path = project_dir / "tooling" / "tooling_manifest.json"
     hybrid_builder_reference = builder_path / "golden" / "customer_facing_hybrid_reference" / "10_REFERENCE_customer_facing_hybrid.yxmd"
     hybrid_beauty_profile = beautification_path / "references" / "customer-facing-hybrid-profile.md"
     hybrid_beauty_reference = beautification_path / "assets" / "customer-facing-hybrid-reference.yxmd"
@@ -1710,9 +1759,18 @@ def _workflow_handoff_prompt(manifest: dict[str, Any], readiness: dict[str, Any]
         "Workflow output folder": WORKFLOW_OUTPUT_DIR,
         "Validation output folder": WORKFLOW_VALIDATION_DIR,
         "Workflow build manifest": _relative_to_project(project_dir, _artifact_path(project_dir, WORKFLOW_MANIFEST_ARTIFACT)),
+        "Tooling manifest": _relative_to_project(project_dir, tooling_manifest_path),
         "Alteryx workflow-builder toolkit": _relative_to_project(project_dir, builder_path),
+        "Workflow-builder skill instructions": _relative_to_project(project_dir, builder_path / "SKILL.md"),
+        "Workflow-builder rules": _relative_to_project(project_dir, builder_path / "WORKFLOW_RULES.md"),
+        "Workflow-builder validation protocol": _relative_to_project(project_dir, builder_path / "VALIDATION_PROTOCOL.md"),
+        "Workflow compile script": _relative_to_project(project_dir, builder_path / "scripts" / "compile.py"),
+        "Workflow lint script": _relative_to_project(project_dir, builder_path / "scripts" / "lint_yxmd.py"),
+        "Workflow render script": _relative_to_project(project_dir, builder_path / "scripts" / "render_workflow_image.py"),
+        "Workflow verifier": _relative_to_project(project_dir, builder_path / "verify_workflows.py"),
         "Hybrid workflow reference": _relative_to_project(project_dir, hybrid_builder_reference),
         "Beautification rules": _relative_to_project(project_dir, beautification_path),
+        "Beautification skill instructions": _relative_to_project(project_dir, beautification_path / "SKILL.md"),
         "Hybrid beautification profile": _relative_to_project(project_dir, hybrid_beauty_profile),
         "Hybrid beautification reference": _relative_to_project(project_dir, hybrid_beauty_reference),
         "Transcript source count": str(transcript_count),
@@ -1747,6 +1805,16 @@ Before doing any workflow design or file search, prove that you are in the corre
 4. Confirm `01_discovery/01_customer_discovery_conversation.md`, `02_sop_authoring/02_guided_sop_capture.md`, `02_sop_authoring/03_accelerator_sop.md`, and `{ARTIFACT_PATHS[WORKFLOW_MANIFEST_ARTIFACT]}` exist under the canonical project root.
 5. If any identity, path, or SOP-gate check fails, stop. Do not search parent folders, sibling projects, demo folders, shelf projects, Downloads, or customer folders as fallbacks.
 
+## Mandatory Local Tooling Gate
+
+Before workflow design, read the bundled project-local tooling files listed in Case Inputs. They are the source of truth for this build, even if global Codex skills are installed on this machine.
+
+1. Read `tooling/tooling_manifest.json` and confirm both bundled toolsets exist.
+2. Read `tooling/alteryx_workflow_builder/SKILL.md`, `WORKFLOW_RULES.md`, and `VALIDATION_PROTOCOL.md`.
+3. Read `tooling/alteryx-beautification/SKILL.md` and the customer-facing hybrid profile.
+4. Use project-local scripts for compile, lint, verify, and render. Do not hand-roll workflow XML when the local builder can compile it.
+5. Global skills may provide background only. If global skills disagree with project-local tooling, project-local tooling wins.
+
 ## Operating Mode
 
 You are Codex running locally with access to this project folder. Build the Alteryx Designer workflow only after checking the SOP gate state below.
@@ -1777,10 +1845,12 @@ You are Codex running locally with access to this project folder. Build the Alte
 
 Apply the bundled Alteryx beautification rules as build requirements, not as optional polish.
 
-- Use a title-first canvas with a clear left-to-right narrative.
-- Place every real tool inside a contextual container with compact, useful annotations.
+- Use a title-first canvas with a clear horizontal left-to-right narrative. A vertical stacked workflow fails visual acceptance.
+- Place every real tool inside a contextual container using real Designer `ToolContainer` child containment, not decorative backplates.
+- Suppress noisy generated tool annotations by default. Pin only short, intentional annotations for central logic tools.
 - Use the bundled customer-facing hybrid reference workflow and profile as the visual standard: top title/banner, clean tool lane, bottom documentation shelf, contextual colored containers, and minimal visual clutter.
 - Treat the hybrid reference as visual grammar only. It must not determine field names, data shapes, formulas, tool sequence, join pattern, output structure, or business entities.
+- Split bottom documentation into 2-4 concise comment boxes inside one collapsible documentation container, spread evenly across the workflow width.
 - Apply aggressive spiderweb reduction: minimize connector crossings, avoid crowded fan-in knots, separate branch lanes, and reroute geometry until the rendered workflow reads cleanly.
 - Prefer readability over blind tool-count minimization. Condense only where it improves both maintainability and visual scanability.
 - Render the workflow preview and iterate until the canvas is clean, balanced, readable, and package-safe.
@@ -1820,6 +1890,10 @@ $StatusDir = Join-Path $ProjectRoot "03_workflow_build\\status"
 $PromptPath = Join-Path $StatusDir "codex_workflow_build_prompt.md"
 $BuildManifestPath = Join-Path $StatusDir "workflow_build_manifest.json"
 $ProjectManifestPath = Join-Path $ProjectRoot "manifest.json"
+$ToolingManifestPath = Join-Path $ProjectRoot "tooling\\tooling_manifest.json"
+$BuilderSkillPath = Join-Path $ProjectRoot "tooling\\alteryx_workflow_builder\\SKILL.md"
+$BuilderRulesPath = Join-Path $ProjectRoot "tooling\\alteryx_workflow_builder\\WORKFLOW_RULES.md"
+$BeautySkillPath = Join-Path $ProjectRoot "tooling\\alteryx-beautification\\SKILL.md"
 
 if (-not (Test-Path $PromptPath)) {
     Write-Host "Prompt not found: $PromptPath"
@@ -1830,6 +1904,14 @@ if (-not (Test-Path $ProjectManifestPath) -or -not (Test-Path $BuildManifestPath
     Write-Host "Project identity files are missing. Refusing to launch Codex against an unsafe folder."
     Read-Host "Press Enter to close"
     exit 1
+}
+foreach ($requiredPath in @($ToolingManifestPath, $BuilderSkillPath, $BuilderRulesPath, $BeautySkillPath)) {
+    if (-not (Test-Path $requiredPath)) {
+        Write-Host "Bundled workflow tooling is missing: $requiredPath"
+        Write-Host "Regenerate the handoff from the cockpit before launching Codex."
+        Read-Host "Press Enter to close"
+        exit 1
+    }
 }
 
 $ProjectManifest = Get-Content -Raw -LiteralPath $ProjectManifestPath | ConvertFrom-Json
@@ -1850,6 +1932,13 @@ try {
     Write-Host "Could not copy to clipboard. Open this file manually:"
     Write-Host $PromptPath
 }
+
+Write-Host ""
+Write-Host "Project-local workflow tooling to read first:"
+Write-Host "  $ToolingManifestPath"
+Write-Host "  $BuilderSkillPath"
+Write-Host "  $BuilderRulesPath"
+Write-Host "  $BeautySkillPath"
 
 $codexCommand = Get-Command codex -ErrorAction SilentlyContinue
 if ($codexCommand) {

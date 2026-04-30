@@ -75,6 +75,8 @@ Use this skill when a workflow needs to look intentional and readable on the can
 - Keep paths relative and package-safe unless the user explicitly needs otherwise.
 - Every real Alteryx tool should belong to a clearly titled contextual container in beautified workflows.
 - Tool containment must be real Designer containment: place section tools inside the owning ToolContainer's `<ChildNodes>`, not as root-level siblings over a decorative container backplate.
+- Suppress noisy generated tool annotations by default with Designer-native hidden annotation settings, especially Formula defaults that echo full expressions. Pin only short, intentional annotations on central tools whose role is not obvious from nearby section titles or comments.
+- When using a bottom documentation shelf with multiple comment boxes, put the comments inside one collapsible ToolContainer and spread them evenly across the workflow width. This keeps review notes available without forcing them to occupy the main logic lane.
 - If a connector crossing can be removed by geometry without harming the story, remove it.
 - A workflow is not visually complete if the reader has to decode a spiderweb to understand it.
 - A workflow is not visually complete if containers collapse to header-only or appear empty after Designer open/run/refresh.

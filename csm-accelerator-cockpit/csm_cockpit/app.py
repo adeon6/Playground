@@ -43,7 +43,7 @@ from .services import (
 )
 
 
-app = FastAPI(title="Accelerator Cockpit V5.1")
+app = FastAPI(title="Accelerator Cockpit V5.3")
 app.mount("/static", StaticFiles(directory=static_root()), name="static")
 templates = Jinja2Templates(directory=template_root())
 
@@ -161,7 +161,7 @@ async def autosave_section(run_id: str, section_id: str, request: Request):
     analysis = refreshed.get("analysis", {}).get(section_id, {})
     evidence_status = analysis.get("status", "not_run")
     should_open = item["status"] in {"not_set", "partial", "not_answered", "needs_follow_up"}
-    auto_collapse = changed_field == "status" and item["status"] == "answered"
+    auto_collapse = changed_field == "approved" and item["approved"]
     return {
         "ok": True,
         "section_id": section_id,

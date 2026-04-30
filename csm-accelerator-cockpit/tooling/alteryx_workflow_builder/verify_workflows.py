@@ -188,7 +188,7 @@ def mode_for_workflow(path: Path, mode_arg: str) -> str:
 
 def collect_visible_text_fields(root: ET.Element) -> List[Tuple[str, str, str]]:
     out: List[Tuple[str, str, str]] = []
-    for node in root.findall('.//Nodes/Node'):
+    for node in root.findall('.//Node'):
         tid = node.get('ToolID') or ''
         for xp in VISIBLE_TEXT_XPATHS:
             elem = node.find(xp)
@@ -238,7 +238,7 @@ def make_violation(path: Path, rule: str, mistake_id: str, element_id: str, seve
 
 def load_plugins_in_order(root: ET.Element) -> List[str]:
     rows: List[Tuple[int, str]] = []
-    for n in root.findall('.//Nodes/Node'):
+    for n in root.findall('.//Node'):
         tid_raw = n.get('ToolID') or '0'
         try:
             tid = int(tid_raw)
@@ -329,7 +329,7 @@ def check_macro_integrity(ctx: WorkflowContext, mode: str) -> List[Violation]:
     out: List[Violation] = []
     expected_slug = kit_slug_from_path(ctx.path).lower()
 
-    for node in ctx.root.findall('.//Nodes/Node'):
+    for node in ctx.root.findall('.//Node'):
         tid = node.get('ToolID') or ''
         eng = node.find('./EngineSettings')
         macro = '' if eng is None else (eng.get('Macro') or '').strip()
@@ -364,7 +364,7 @@ def check_macro_integrity(ctx: WorkflowContext, mode: str) -> List[Violation]:
 
 def collect_comment_boxes(root: ET.Element) -> List[dict]:
     boxes: List[dict] = []
-    for node in root.findall('.//Nodes/Node'):
+    for node in root.findall('.//Node'):
         gs = node.find('./GuiSettings')
         if gs is None or gs.get('Plugin') != 'AlteryxGuiToolkit.TextBox.TextBox':
             continue
@@ -425,7 +425,7 @@ def check_layout_containment(ctx: WorkflowContext, mode: str) -> List[Violation]
                 break
 
     # Tool annotation containment
-    for node in ctx.root.findall('.//Nodes/Node'):
+    for node in ctx.root.findall('.//Node'):
         tid = node.get('ToolID') or ''
         gs = node.find('./GuiSettings')
         if gs is None or gs.get('Plugin') == 'AlteryxGuiToolkit.TextBox.TextBox':
@@ -490,7 +490,7 @@ def check_naming(ctx: WorkflowContext, mode: str) -> List[Violation]:
     if mode != 'starter_kit':
         return out
 
-    for node in ctx.root.findall('.//Nodes/Node'):
+    for node in ctx.root.findall('.//Node'):
         tid = node.get('ToolID') or ''
         gs = node.find('./GuiSettings')
         plugin = gs.get('Plugin', '') if gs is not None else ''
@@ -542,7 +542,7 @@ def check_configuration(
 def check_structure(ctx: WorkflowContext, baselines: Dict[str, List[str]]) -> List[Violation]:
     out: List[Violation] = []
 
-    nodes = ctx.root.findall('.//Nodes/Node')
+    nodes = ctx.root.findall('.//Node')
     ids = [n.get('ToolID') or '' for n in nodes]
     if len(ids) != len(set(ids)):
         out.append(make_violation(ctx.path, 'R-CONFIG-002', 'M-STRUCT-001', 'graph', 'critical', 'Duplicate ToolID detected'))
@@ -609,7 +609,7 @@ def check_capability_coverage(
     all_map = plugin_to_op_all(capability_registry)
     ops = capability_registry.get('ops') or {}
 
-    for node in ctx.root.findall('.//Nodes/Node'):
+    for node in ctx.root.findall('.//Node'):
         tid = node.get('ToolID') or ''
         gs = node.find('./GuiSettings')
         plugin = gs.get('Plugin', '') if gs is not None else ''

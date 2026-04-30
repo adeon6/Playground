@@ -842,7 +842,7 @@ def compile_spec_document(
         if op == "join":
             to_anchor = "Left" if index == 0 else "Right" if index == 1 else f"Input{index + 1}"
         elif op == "union":
-            to_anchor = f"Input{index + 1}"
+            to_anchor = "Input"
         else:
             to_anchor = "Input"
         pending_connections.append((upstream_key, from_anchor, downstream_key, to_anchor))
@@ -893,8 +893,10 @@ def compile_spec_document(
             upstream_keys = [last_non_input_key]
         elif len(nodes_by_key) == 1:
             upstream_keys = [next(iter(nodes_by_key.keys()))]
-        elif len(nodes_by_key) > 1 and op in {"join", "union"}:
+        elif len(nodes_by_key) > 1 and op == "join":
             upstream_keys = list(nodes_by_key.keys())[:2]
+        elif len(nodes_by_key) > 1 and op == "union":
+            upstream_keys = list(nodes_by_key.keys())
         else:
             upstream_keys = []
 

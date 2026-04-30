@@ -1,7 +1,7 @@
 # VALIDATION_PROTOCOL.md
 
 ## Deterministic Validation Strategy
-Validation is static XML inspection only (no Designer runtime required).
+Static XML inspection is necessary but not sufficient. When Alteryx Designer or `AlteryxEngineCmd.exe` is available, runtime execution is a required completion gate for generated or materially edited workflows. If the engine is unavailable, report that limitation explicitly.
 
 ## Standard Validation Pipeline
 ```bash
@@ -10,6 +10,7 @@ python3 scripts/compile.py --spec <spec.json> --out_dir <dist> --mode demo
 python3 scripts/lint_yxmd.py <dist-or-yxmd> --recursive --mode demo
 python3 verify_workflows.py --dirs <dist-or-folder> --mode demo
 python3 scripts/golden_sanity.py
+& "C:\Program Files\Alteryx\bin\AlteryxEngineCmd.exe" <dist-or-folder>\main.yxmd
 ```
 
 ## Multi-Agent Inspection Mode
@@ -26,6 +27,12 @@ Agents:
 - Agent 6: configuration/version
 - Agent 7: capability coverage (tier-2/native/profile)
 - Agent 8: governance mapping completeness
+
+## Designer-Native Runtime Rules
+- Treat Designer behavior as the source of truth. Renderer output and static checks do not prove that a tool is configured, resolvable, or runnable.
+- Native-supported tools must use Designer-authored configuration shapes. In particular, Formula, Join, Filter, and Summarize XML must match Designer semantics for configuration and connection anchors.
+- Validators must traverse nested `<Node>` elements inside ToolContainers; Designer-valid workflows often place executable tools in `<ChildNodes>`.
+- Relative input/output paths must resolve from the workflow file's runtime location. If compiling into `dist`, stage required `data` assets under `dist` or rewrite paths relative to the emitted workflow.
 
 ## Mode and Version Controls
 - `--mode auto|starter_kit|demo`
@@ -66,4 +73,5 @@ When validating/analyzing existing workflows in `starter_kit` mode, the followin
 ### Pass Criteria
 - `verify_workflows.py`: PASS
 - `scripts/lint_yxmd.py`: zero errors
+- `AlteryxEngineCmd.exe`: clean run when available, or an explicit unavailable-engine note
 - Geometry validators: PASS (when present)
